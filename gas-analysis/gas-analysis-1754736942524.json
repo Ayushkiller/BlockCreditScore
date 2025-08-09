@@ -1,0 +1,12 @@
+{
+  "deployment": 921228,
+  "operations": {
+    "createProfile": 459838,
+    "scoreUpdate_3points": 113442,
+    "scoreUpdate_5points": 112462,
+    "scoreUpdate_10points": 115197,
+    "scoreUpdate_20points": 120644,
+    "addAuthorizedUpdater": 46208,
+    "removeAuthorizedUpdater": 24289
+  }
+}

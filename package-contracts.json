@@ -1,0 +1,25 @@
+{
+  "name": "cryptovault-contracts",
+  "version": "1.0.0",
+  "description": "Smart contracts for CryptoVault Credit Intelligence",
+  "scripts": {
+    "build": "hardhat compile",
+    "test": "hardhat test",
+    "deploy:goerli": "hardhat run scripts/deploy.ts --network goerli",
+    "deploy:sepolia": "hardhat run scripts/deploy.ts --network sepolia",
+    "verify:goerli": "hardhat run scripts/verify.ts --network goerli",
+    "verify:sepolia": "hardhat run scripts/verify.ts --network sepolia",
+    "dev": "hardhat node"
+  },
+  "devDependencies": {
+    "@nomicfoundation/hardhat-toolbox": "^3.0.0",
+    "@openzeppelin/hardhat-upgrades": "^1.28.0",
+    "hardhat": "^2.17.0",
+    "hardhat-gas-reporter": "^1.0.9",
+    "solidity-coverage": "^0.8.4",
+    "dotenv": "^16.3.1"
+  },
+  "dependencies": {
+    "@openzeppelin/contracts": "^4.9.3"
+  }
+}

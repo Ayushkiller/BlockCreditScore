@@ -1,0 +1,59 @@
+{
+  "timestamp": "2025-08-09T10:56:51.939Z",
+  "network": "hardhat",
+  "contractAddress": "0x5FbDB2315678afecb367f032d93F642f64180aa3",
+  "results": {
+    "passed": 12,
+    "failed": 0,
+    "tests": [
+      {
+        "name": "Contract Constants Verification",
+        "status": "PASSED"
+      },
+      {
+        "name": "Profile Creation",
+        "status": "PASSED"
+      },
+      {
+        "name": "Duplicate Profile Prevention",
+        "status": "PASSED"
+      },
+      {
+        "name": "Score Dimension Updates",
+        "status": "PASSED"
+      },
+      {
+        "name": "Insufficient Data Handling",
+        "status": "PASSED"
+      },
+      {
+        "name": "Multiple Dimensions Support",
+        "status": "PASSED"
+      },
+      {
+        "name": "Composite Score Calculation",
+        "status": "PASSED"
+      },
+      {
+        "name": "Authorization System",
+        "status": "PASSED"
+      },
+      {
+        "name": "Unauthorized Access Prevention",
+        "status": "PASSED"
+      },
+      {
+        "name": "Score Trend Calculation",
+        "status": "PASSED"
+      },
+      {
+        "name": "Edge Cases Handling",
+        "status": "PASSED"
+      },
+      {
+        "name": "Gas Efficiency Check",
+        "status": "PASSED"
+      }
+    ]
+  }
+}

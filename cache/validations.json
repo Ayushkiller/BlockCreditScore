@@ -1,0 +1,728 @@
+{
+  "version": "3.4",
+  "log": [
+    {
+      "@openzeppelin/contracts/access/Ownable.sol:Ownable": {
+        "src": "@openzeppelin\\contracts\\access\\Ownable.sol:20",
+        "inherit": [
+          "@openzeppelin/contracts/utils/Context.sol:Context"
+        ],
+        "libraries": [],
+        "methods": [
+          "owner()",
+          "renounceOwnership()",
+          "transferOwnership(address)"
+        ],
+        "linkReferences": [],
+        "errors": [
+          {
+            "kind": "constructor",
+            "contract": "Ownable",
+            "src": "@openzeppelin\\contracts\\access\\Ownable.sol:38"
+          }
+        ],
+        "layout": {
+          "storage": [
+            {
+              "label": "_owner",
+              "offset": 0,
+              "slot": "0",
+              "type": "t_address",
+              "contract": "Ownable",
+              "src": "@openzeppelin\\contracts\\access\\Ownable.sol:21"
+            }
+          ],
+          "types": {
+            "t_address": {
+              "label": "address",
+              "numberOfBytes": "20"
+            }
+          },
+          "layoutVersion": "1.2",
+          "flat": true,
+          "namespaces": {}
+        },
+        "solcVersion": "0.8.20"
+      },
+      "@openzeppelin/contracts/utils/Context.sol:Context": {
+        "src": "@openzeppelin\\contracts\\utils\\Context.sol:16",
+        "inherit": [],
+        "libraries": [],
+        "methods": [],
+        "linkReferences": [],
+        "errors": [],
+        "layout": {
+          "storage": [],
+          "types": {},
+          "layoutVersion": "1.2",
+          "flat": false,
+          "namespaces": {}
+        },
+        "solcVersion": "0.8.20"
+      },
+      "@openzeppelin/contracts/utils/ReentrancyGuard.sol:ReentrancyGuard": {
+        "src": "@openzeppelin\\contracts\\utils\\ReentrancyGuard.sol:25",
+        "inherit": [],
+        "libraries": [],
+        "methods": [],
+        "linkReferences": [],
+        "errors": [
+          {
+            "kind": "constructor",
+            "contract": "ReentrancyGuard",
+            "src": "@openzeppelin\\contracts\\utils\\ReentrancyGuard.sol:47"
+          }
+        ],
+        "layout": {
+          "storage": [
+            {
+              "label": "_status",
+              "offset": 0,
+              "slot": "0",
+              "type": "t_uint256",
+              "contract": "ReentrancyGuard",
+              "src": "@openzeppelin\\contracts\\utils\\ReentrancyGuard.sol:40"
+            }
+          ],
+          "types": {
+            "t_uint256": {
+              "label": "uint256",
+              "numberOfBytes": "32"
+            }
+          },
+          "layoutVersion": "1.2",
+          "flat": true,
+          "namespaces": {}
+        },
+        "solcVersion": "0.8.20"
+      },
+      "contracts/SimpleCreditScore.sol:SimpleCreditScore": {
+        "src": "contracts\\SimpleCreditScore.sol:11",
+        "version": {
+          "withMetadata": "f3e13526410387c50660bccb3d05c420eadebc7df445e18cf70ca41be15d0801",
+          "withoutMetadata": "b60780d89232bcb7c60893dd801633c3235ac509dd4ec27d58e662c093f46af3",
+          "linkedWithoutMetadata": "b60780d89232bcb7c60893dd801633c3235ac509dd4ec27d58e662c093f46af3"
+        },
+        "inherit": [
+          "@openzeppelin/contracts/utils/ReentrancyGuard.sol:ReentrancyGuard",
+          "@openzeppelin/contracts/access/Ownable.sol:Ownable",
+          "@openzeppelin/contracts/utils/Context.sol:Context"
+        ],
+        "libraries": [],
+        "methods": [
+          "()",
+          "createCreditProfile(address)",
+          "updateScoreDimension(address,uint8,uint256[],uint256[])",
+          "getCreditProfile(address)",
+          "getScoreDimension(address,uint8)",
+          "getCompositeScore(address)",
+          "addAuthorizedUpdater(address)",
+          "removeAuthorizedUpdater(address)"
+        ],
+        "linkReferences": [],
+        "errors": [
+          {
+            "kind": "constructor",
+            "contract": "SimpleCreditScore",
+            "src": "contracts\\SimpleCreditScore.sol:64"
+          }
+        ],
+        "layout": {
+          "storage": [
+            {
+              "label": "_owner",
+              "offset": 0,
+              "slot": "0",
+              "type": "t_address",
+              "contract": "Ownable",
+              "src": "@openzeppelin\\contracts\\access\\Ownable.sol:21"
+            },
+            {
+              "label": "_status",
+              "offset": 0,
+              "slot": "1",
+              "type": "t_uint256",
+              "contract": "ReentrancyGuard",
+              "src": "@openzeppelin\\contracts\\utils\\ReentrancyGuard.sol:40"
+            },
+            {
+              "label": "creditProfiles",
+              "offset": 0,
+              "slot": "2",
+              "type": "t_mapping(t_address,t_struct(CreditProfile)301_storage)",
+              "contract": "SimpleCreditScore",
+              "src": "contracts\\SimpleCreditScore.sol:45"
+            },
+            {
+              "label": "authorizedUpdaters",
+              "offset": 0,
+              "slot": "3",
+              "type": "t_mapping(t_address,t_bool)",
+              "contract": "SimpleCreditScore",
+              "src": "contracts\\SimpleCreditScore.sol:46"
+            }
+          ],
+          "types": {
+            "t_address": {
+              "label": "address",
+              "numberOfBytes": "20"
+            },
+            "t_array(t_address)dyn_storage": {
+              "label": "address[]",
+              "numberOfBytes": "32"
+            },
+            "t_bool": {
+              "label": "bool",
+              "numberOfBytes": "1"
+            },
+            "t_enum(CreditDimension)271": {
+              "label": "enum SimpleCreditScore.CreditDimension",
+              "members": [
+                "DEFI_RELIABILITY",
+                "TRADING_CONSISTENCY",
+                "STAKING_COMMITMENT",
+                "GOVERNANCE_PARTICIPATION",
+                "LIQUIDITY_PROVIDER"
+              ],
+              "numberOfBytes": "1"
+            },
+            "t_enum(ScoreTrend)265": {
+              "label": "enum SimpleCreditScore.ScoreTrend",
+              "members": [
+                "IMPROVING",
+                "STABLE",
+                "DECLINING"
+              ],
+              "numberOfBytes": "1"
+            },
+            "t_mapping(t_address,t_bool)": {
+              "label": "mapping(address => bool)",
+              "numberOfBytes": "32"
+            },
+            "t_mapping(t_address,t_struct(CreditProfile)301_storage)": {
+              "label": "mapping(address => struct SimpleCreditScore.CreditProfile)",
+              "numberOfBytes": "32"
+            },
+            "t_mapping(t_enum(CreditDimension)271,t_struct(ScoreDimensionData)285_storage)": {
+              "label": "mapping(enum SimpleCreditScore.CreditDimension => struct SimpleCreditScore.ScoreDimensionData)",
+              "numberOfBytes": "32"
+            },
+            "t_struct(CreditProfile)301_storage": {
+              "label": "struct SimpleCreditScore.CreditProfile",
+              "members": [
+                {
+                  "label": "userAddress",
+                  "type": "t_address",
+                  "offset": 0,
+                  "slot": "0"
+                },
+                {
+                  "label": "linkedWallets",
+                  "type": "t_array(t_address)dyn_storage",
+                  "offset": 0,
+                  "slot": "1"
+                },
+                {
+                  "label": "dimensions",
+                  "type": "t_mapping(t_enum(CreditDimension)271,t_struct(ScoreDimensionData)285_storage)",
+                  "offset": 0,
+                  "slot": "2"
+                },
+                {
+                  "label": "lastUpdated",
+                  "type": "t_uint256",
+                  "offset": 0,
+                  "slot": "3"
+                },
+                {
+                  "label": "exists",
+                  "type": "t_bool",
+                  "offset": 0,
+                  "slot": "4"
+                }
+              ],
+              "numberOfBytes": "160"
+            },
+            "t_struct(ScoreDimensionData)285_storage": {
+              "label": "struct SimpleCreditScore.ScoreDimensionData",
+              "members": [
+                {
+                  "label": "score",
+                  "type": "t_uint256",
+                  "offset": 0,
+                  "slot": "0"
+                },
+                {
+                  "label": "confidence",
+                  "type": "t_uint256",
+                  "offset": 0,
+                  "slot": "1"
+                },
+                {
+                  "label": "dataPoints",
+                  "type": "t_uint256",
+                  "offset": 0,
+                  "slot": "2"
+                },
+                {
+                  "label": "trend",
+                  "type": "t_enum(ScoreTrend)265",
+                  "offset": 0,
+                  "slot": "3"
+                },
+                {
+                  "label": "lastCalculated",
+                  "type": "t_uint256",
+                  "offset": 0,
+                  "slot": "4"
+                },
+                {
+                  "label": "hasInsufficientData",
+                  "type": "t_bool",
+                  "offset": 0,
+                  "slot": "5"
+                }
+              ],
+              "numberOfBytes": "192"
+            },
+            "t_uint256": {
+              "label": "uint256",
+              "numberOfBytes": "32"
+            }
+          },
+          "layoutVersion": "1.2",
+          "flat": true,
+          "namespaces": {}
+        },
+        "solcVersion": "0.8.20"
+      }
+    },
+    {
+      "@openzeppelin/contracts/access/Ownable.sol:Ownable": {
+        "src": "@openzeppelin\\contracts\\access\\Ownable.sol:20",
+        "inherit": [
+          "@openzeppelin/contracts/utils/Context.sol:Context"
+        ],
+        "libraries": [],
+        "methods": [
+          "owner()",
+          "renounceOwnership()",
+          "transferOwnership(address)"
+        ],
+        "linkReferences": [],
+        "errors": [
+          {
+            "kind": "constructor",
+            "contract": "Ownable",
+            "src": "@openzeppelin\\contracts\\access\\Ownable.sol:38"
+          }
+        ],
+        "layout": {
+          "storage": [
+            {
+              "label": "_owner",
+              "offset": 0,
+              "slot": "0",
+              "type": "t_address",
+              "contract": "Ownable",
+              "src": "@openzeppelin\\contracts\\access\\Ownable.sol:21"
+            }
+          ],
+          "types": {
+            "t_address": {
+              "label": "address",
+              "numberOfBytes": "20"
+            }
+          },
+          "layoutVersion": "1.2",
+          "flat": true,
+          "namespaces": {}
+        },
+        "solcVersion": "0.8.20"
+      },
+      "@openzeppelin/contracts/token/ERC721/IERC721.sol:IERC721": {
+        "src": "@openzeppelin\\contracts\\token\\ERC721\\IERC721.sol:11",
+        "inherit": [
+          "@openzeppelin/contracts/utils/introspection/IERC165.sol:IERC165"
+        ],
+        "libraries": [],
+        "methods": [
+          "balanceOf(address)",
+          "ownerOf(uint256)",
+          "safeTransferFrom(address,address,uint256,bytes)",
+          "safeTransferFrom(address,address,uint256)",
+          "transferFrom(address,address,uint256)",
+          "approve(address,uint256)",
+          "setApprovalForAll(address,bool)",
+          "getApproved(uint256)",
+          "isApprovedForAll(address,address)"
+        ],
+        "linkReferences": [],
+        "errors": [],
+        "layout": {
+          "storage": [],
+          "types": {},
+          "layoutVersion": "1.2",
+          "flat": false,
+          "namespaces": {}
+        },
+        "solcVersion": "0.8.20"
+      },
+      "@openzeppelin/contracts/utils/Context.sol:Context": {
+        "src": "@openzeppelin\\contracts\\utils\\Context.sol:16",
+        "inherit": [],
+        "libraries": [],
+        "methods": [],
+        "linkReferences": [],
+        "errors": [],
+        "layout": {
+          "storage": [],
+          "types": {},
+          "layoutVersion": "1.2",
+          "flat": false,
+          "namespaces": {}
+        },
+        "solcVersion": "0.8.20"
+      },
+      "@openzeppelin/contracts/utils/ReentrancyGuard.sol:ReentrancyGuard": {
+        "src": "@openzeppelin\\contracts\\utils\\ReentrancyGuard.sol:25",
+        "inherit": [],
+        "libraries": [],
+        "methods": [],
+        "linkReferences": [],
+        "errors": [
+          {
+            "kind": "constructor",
+            "contract": "ReentrancyGuard",
+            "src": "@openzeppelin\\contracts\\utils\\ReentrancyGuard.sol:47"
+          }
+        ],
+        "layout": {
+          "storage": [
+            {
+              "label": "_status",
+              "offset": 0,
+              "slot": "0",
+              "type": "t_uint256",
+              "contract": "ReentrancyGuard",
+              "src": "@openzeppelin\\contracts\\utils\\ReentrancyGuard.sol:40"
+            }
+          ],
+          "types": {
+            "t_uint256": {
+              "label": "uint256",
+              "numberOfBytes": "32"
+            }
+          },
+          "layoutVersion": "1.2",
+          "flat": true,
+          "namespaces": {}
+        },
+        "solcVersion": "0.8.20"
+      },
+      "@openzeppelin/contracts/utils/introspection/IERC165.sol:IERC165": {
+        "src": "@openzeppelin\\contracts\\utils\\introspection\\IERC165.sol:15",
+        "inherit": [],
+        "libraries": [],
+        "methods": [
+          "supportsInterface(bytes4)"
+        ],
+        "linkReferences": [],
+        "errors": [],
+        "layout": {
+          "storage": [],
+          "types": {},
+          "layoutVersion": "1.2",
+          "flat": false,
+          "namespaces": {}
+        },
+        "solcVersion": "0.8.20"
+      },
+      "contracts/SimpleCreditScore.sol:SimpleCreditScore": {
+        "src": "contracts\\SimpleCreditScore.sol:11",
+        "version": {
+          "withMetadata": "f483bc8ebd56287ff80a35fc31332db3368fb2d5b26bdddcdbaf59d0fbfd61db",
+          "withoutMetadata": "b60780d89232bcb7c60893dd801633c3235ac509dd4ec27d58e662c093f46af3",
+          "linkedWithoutMetadata": "b60780d89232bcb7c60893dd801633c3235ac509dd4ec27d58e662c093f46af3"
+        },
+        "inherit": [
+          "@openzeppelin/contracts/utils/ReentrancyGuard.sol:ReentrancyGuard",
+          "@openzeppelin/contracts/access/Ownable.sol:Ownable",
+          "@openzeppelin/contracts/utils/Context.sol:Context"
+        ],
+        "libraries": [],
+        "methods": [
+          "()",
+          "createCreditProfile(address)",
+          "updateScoreDimension(address,uint8,uint256[],uint256[])",
+          "getCreditProfile(address)",
+          "getScoreDimension(address,uint8)",
+          "getCompositeScore(address)",
+          "addAuthorizedUpdater(address)",
+          "removeAuthorizedUpdater(address)"
+        ],
+        "linkReferences": [],
+        "errors": [
+          {
+            "kind": "constructor",
+            "contract": "SimpleCreditScore",
+            "src": "contracts\\SimpleCreditScore.sol:64"
+          }
+        ],
+        "layout": {
+          "storage": [
+            {
+              "label": "_owner",
+              "offset": 0,
+              "slot": "0",
+              "type": "t_address",
+              "contract": "Ownable",
+              "src": "@openzeppelin\\contracts\\access\\Ownable.sol:21"
+            },
+            {
+              "label": "_status",
+              "offset": 0,
+              "slot": "1",
+              "type": "t_uint256",
+              "contract": "ReentrancyGuard",
+              "src": "@openzeppelin\\contracts\\utils\\ReentrancyGuard.sol:40"
+            },
+            {
+              "label": "creditProfiles",
+              "offset": 0,
+              "slot": "2",
+              "type": "t_mapping(t_address,t_struct(CreditProfile)430_storage)",
+              "contract": "SimpleCreditScore",
+              "src": "contracts\\SimpleCreditScore.sol:45"
+            },
+            {
+              "label": "authorizedUpdaters",
+              "offset": 0,
+              "slot": "3",
+              "type": "t_mapping(t_address,t_bool)",
+              "contract": "SimpleCreditScore",
+              "src": "contracts\\SimpleCreditScore.sol:46"
+            }
+          ],
+          "types": {
+            "t_address": {
+              "label": "address",
+              "numberOfBytes": "20"
+            },
+            "t_array(t_address)dyn_storage": {
+              "label": "address[]",
+              "numberOfBytes": "32"
+            },
+            "t_bool": {
+              "label": "bool",
+              "numberOfBytes": "1"
+            },
+            "t_enum(CreditDimension)400": {
+              "label": "enum SimpleCreditScore.CreditDimension",
+              "members": [
+                "DEFI_RELIABILITY",
+                "TRADING_CONSISTENCY",
+                "STAKING_COMMITMENT",
+                "GOVERNANCE_PARTICIPATION",
+                "LIQUIDITY_PROVIDER"
+              ],
+              "numberOfBytes": "1"
+            },
+            "t_enum(ScoreTrend)394": {
+              "label": "enum SimpleCreditScore.ScoreTrend",
+              "members": [
+                "IMPROVING",
+                "STABLE",
+                "DECLINING"
+              ],
+              "numberOfBytes": "1"
+            },
+            "t_mapping(t_address,t_bool)": {
+              "label": "mapping(address => bool)",
+              "numberOfBytes": "32"
+            },
+            "t_mapping(t_address,t_struct(CreditProfile)430_storage)": {
+              "label": "mapping(address => struct SimpleCreditScore.CreditProfile)",
+              "numberOfBytes": "32"
+            },
+            "t_mapping(t_enum(CreditDimension)400,t_struct(ScoreDimensionData)414_storage)": {
+              "label": "mapping(enum SimpleCreditScore.CreditDimension => struct SimpleCreditScore.ScoreDimensionData)",
+              "numberOfBytes": "32"
+            },
+            "t_struct(CreditProfile)430_storage": {
+              "label": "struct SimpleCreditScore.CreditProfile",
+              "members": [
+                {
+                  "label": "userAddress",
+                  "type": "t_address",
+                  "offset": 0,
+                  "slot": "0"
+                },
+                {
+                  "label": "linkedWallets",
+                  "type": "t_array(t_address)dyn_storage",
+                  "offset": 0,
+                  "slot": "1"
+                },
+                {
+                  "label": "dimensions",
+                  "type": "t_mapping(t_enum(CreditDimension)400,t_struct(ScoreDimensionData)414_storage)",
+                  "offset": 0,
+                  "slot": "2"
+                },
+                {
+                  "label": "lastUpdated",
+                  "type": "t_uint256",
+                  "offset": 0,
+                  "slot": "3"
+                },
+                {
+                  "label": "exists",
+                  "type": "t_bool",
+                  "offset": 0,
+                  "slot": "4"
+                }
+              ],
+              "numberOfBytes": "160"
+            },
+            "t_struct(ScoreDimensionData)414_storage": {
+              "label": "struct SimpleCreditScore.ScoreDimensionData",
+              "members": [
+                {
+                  "label": "score",
+                  "type": "t_uint256",
+                  "offset": 0,
+                  "slot": "0"
+                },
+                {
+                  "label": "confidence",
+                  "type": "t_uint256",
+                  "offset": 0,
+                  "slot": "1"
+                },
+                {
+                  "label": "dataPoints",
+                  "type": "t_uint256",
+                  "offset": 0,
+                  "slot": "2"
+                },
+                {
+                  "label": "trend",
+                  "type": "t_enum(ScoreTrend)394",
+                  "offset": 0,
+                  "slot": "3"
+                },
+                {
+                  "label": "lastCalculated",
+                  "type": "t_uint256",
+                  "offset": 0,
+                  "slot": "4"
+                },
+                {
+                  "label": "hasInsufficientData",
+                  "type": "t_bool",
+                  "offset": 0,
+                  "slot": "5"
+                }
+              ],
+              "numberOfBytes": "192"
+            },
+            "t_uint256": {
+              "label": "uint256",
+              "numberOfBytes": "32"
+            }
+          },
+          "layoutVersion": "1.2",
+          "flat": true,
+          "namespaces": {}
+        },
+        "solcVersion": "0.8.20"
+      },
+      "contracts/interfaces/ICreditCertificate.sol:ICreditCertificate": {
+        "src": "contracts\\interfaces\\ICreditCertificate.sol:12",
+        "inherit": [
+          "@openzeppelin/contracts/token/ERC721/IERC721.sol:IERC721",
+          "@openzeppelin/contracts/utils/introspection/IERC165.sol:IERC165"
+        ],
+        "libraries": [],
+        "methods": [
+          "mintCertificate(address)",
+          "updateMetadata(uint256)",
+          "requestUpdate(uint256)",
+          "addAchievementBadge(uint256,string)",
+          "getCertificateMetadata(uint256)",
+          "getCreditTier(uint256)",
+          "checkUpdateNeeded(uint256)",
+          "getMetadataHash(uint256)",
+          "getCertificatesByOwner(address)",
+          "getTierDistribution()"
+        ],
+        "linkReferences": [],
+        "errors": [],
+        "layout": {
+          "storage": [],
+          "types": {},
+          "layoutVersion": "1.2",
+          "flat": false,
+          "namespaces": {}
+        },
+        "solcVersion": "0.8.20"
+      },
+      "contracts/interfaces/ICreditScoringEngine.sol:ICreditScoringEngine": {
+        "src": "contracts\\interfaces\\ICreditScoringEngine.sol:9",
+        "inherit": [],
+        "libraries": [],
+        "methods": [
+          "createCreditProfile(address)",
+          "updateScoreDimension(address,uint8,uint256[],uint256[])",
+          "linkWallet(address,address)",
+          "getCreditProfile(address)",
+          "getScoreDimension(address,uint8)",
+          "getLinkedWallets(address)",
+          "getCompositeScore(address,(uint256,uint256,uint256,uint256,uint256))",
+          "checkDataSufficiency(address)"
+        ],
+        "linkReferences": [],
+        "errors": [],
+        "layout": {
+          "storage": [],
+          "types": {},
+          "layoutVersion": "1.2",
+          "flat": false,
+          "namespaces": {}
+        },
+        "solcVersion": "0.8.20"
+      },
+      "contracts/interfaces/IZKVerifier.sol:IZKVerifier": {
+        "src": "contracts\\interfaces\\IZKVerifier.sol:11",
+        "inherit": [],
+        "libraries": [],
+        "methods": [
+          "generateThresholdProof(address,uint256,enum ICreditScoringEngine.CreditDimension[],uint8)",
+          "generateSelectiveDisclosureProof(address,enum ICreditScoringEngine.CreditDimension[],enum ICreditScoringEngine.CreditDimension[])",
+          "verifyProof(bytes32,(uint256[8],uint256[2],bytes32,uint256,uint256))",
+          "requestThresholdVerification(address,uint256,enum ICreditScoringEngine.CreditDimension[],uint8)",
+          "requestSelectiveDisclosure(address,enum ICreditScoringEngine.CreditDimension[])",
+          "fallbackVerification(address,address,string)",
+          "getVerificationRequest(bytes32)",
+          "getProof(bytes32)",
+          "checkThresholdCompliance(bytes32,uint256)",
+          "getActiveRequests(address)",
+          "cancelVerificationRequest(bytes32)",
+          "setFallbackConsent(address,bool)",
+          "isFallbackAllowed(address,address)"
+        ],
+        "linkReferences": [],
+        "errors": [],
+        "layout": {
+          "storage": [],
+          "types": {},
+          "layoutVersion": "1.2",
+          "flat": false,
+          "namespaces": {}
+        },
+        "solcVersion": "0.8.20"
+      }
+    }
+  ]
+}

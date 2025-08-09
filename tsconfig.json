@@ -1,0 +1,65 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "allowJs": true,
+    "skipLibCheck": true,
+    "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
+    "strict": true,
+    "forceConsistentCasingInFileNames": true,
+    "noFallthroughCasesInSwitch": true,
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "noEmit": true,
+    "declaration": true,
+    "declarationMap": true,
+    "sourceMap": true,
+    "outDir": "./dist",
+    "rootDir": "./",
+    "baseUrl": ".",
+    "paths": {
+      "@types/*": ["./types/*"],
+      "@contracts/*": ["./contracts/*"],
+      "@services/*": ["./services/*"],
+      "@frontend/*": ["./frontend/*"],
+      "@config/*": ["./config/*"],
+      "@utils/*": ["./utils/*"]
+    },
+    "typeRoots": ["./node_modules/@types", "./types"],
+    "experimentalDecorators": true,
+    "emitDecoratorMetadata": true
+  },
+  "include": [
+    "types/**/*",
+    "contracts/**/*",
+    "services/**/*",
+    "frontend/**/*",
+    "config/**/*",
+    "utils/**/*",
+    "tests/**/*"
+  ],
+  "exclude": [
+    "node_modules",
+    "dist",
+    "build",
+    "coverage",
+    "**/*.test.ts",
+    "**/*.spec.ts"
+  ],
+  "references": [
+    { "path": "./contracts" },
+    { "path": "./services/api-gateway" },
+    { "path": "./services/credit-scoring" },
+    { "path": "./services/data-aggregator" },
+    { "path": "./services/ml-prediction" },
+    { "path": "./services/analytics" },
+    { "path": "./services/gamification" },
+    { "path": "./services/social-credit" },
+    { "path": "./services/scoring-engine" },
+    { "path": "./frontend" },
+    { "path": "./types" }
+  ]
+}
