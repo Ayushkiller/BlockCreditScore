@@ -340,7 +340,7 @@ const StatusOverview: React.FC = () => {
         }`,
         `Avg History Size: ${volatilityStatus.averageHistorySize}`,
         `Update Interval: ${volatilityStatus.updateInterval / 1000}s`,
-        `Recent Alerts: ${volatilityStatus.recentAlerts.length}`,
+        `Recent Alerts: ${(volatilityStatus.recentAlerts?.length ?? 0)}`,
         `Data Age: ${volatilityStatus.newestDataPoint ? 
           Math.floor((Date.now() - volatilityStatus.newestDataPoint) / 1000) + 's' : 'N/A'}`
       ]
@@ -516,7 +516,7 @@ const StatusOverview: React.FC = () => {
       )}
 
       {/* Price Feed Sources Status */}
-      {priceFailoverStatus.sources.length > 0 && (
+      {Array.isArray(priceFailoverStatus.sources) && priceFailoverStatus.sources.length > 0 && (
         <div className="card">
           <h3 className="text-xl font-semibold text-gray-900 mb-6">Price Feed Sources Status</h3>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -588,7 +588,7 @@ const StatusOverview: React.FC = () => {
       )}
 
       {/* Recent Volatility Alerts */}
-      {volatilityStatus.recentAlerts.length > 0 && (
+      {Array.isArray(volatilityStatus.recentAlerts) && volatilityStatus.recentAlerts.length > 0 && (
         <div className="card">
           <h3 className="text-xl font-semibold text-gray-900 mb-6">Recent Volatility Alerts</h3>
           <div className="space-y-3 max-h-64 overflow-y-auto">
