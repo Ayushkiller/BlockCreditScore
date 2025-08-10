@@ -1,8 +1,11 @@
+require('dotenv').config();
+
 const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
 const morgan = require('morgan');
-require('dotenv').config();
+const { blockchainIntegration } = require('./blockchain-integration');
+const realProtocolIntegration = require('./real-protocol-integration');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -283,6 +286,286 @@ app.get('/api/social-credit/:address', (req, res) => {
   res.json(mockCreditProfile.socialCredit);
 });
 
+// Blockchain Connection Status Routes
+app.get('/api/blockchain/status', async (req, res) => {
+  console.log('Fetching blockchain connection status');
+  
+  try {
+    const status = await blockchainIntegration.getConnectionStatus();
+    res.json(status);
+  } catch (error) {
+    console.error('Error fetching blockchain status:', error);
+    res.status(500).json({
+      error: 'Failed to fetch blockchain status',
+      message: error.message
+    });
+  }
+});
+
+// Blockchain Health Check Route
+app.post('/api/blockchain/health-check', async (req, res) => {
+  console.log('Performing blockchain health check');
+  
+  try {
+    const results = await blockchainIntegration.performHealthCheck();
+    res.json({ results, timestamp: Date.now() });
+  } catch (error) {
+    console.error('Error performing health check:', error);
+    res.status(500).json({
+      error: 'Failed to perform health check',
+      message: error.message
+    });
+  }
+});
+
+// Blockchain Transaction Routes
+app.get('/api/blockchain/transaction/:hash', async (req, res) => {
+  const { hash } = req.params;
+  console.log(`Fetching transaction: ${hash}`);
+  
+  try {
+    const transaction = await blockchainIntegration.getTransaction(hash);
+    res.json(transaction);
+  } catch (error) {
+    console.error(`Error fetching transaction ${hash}:`, error);
+    res.status(500).json({
+      error: 'Failed to fetch transaction',
+      message: error.message
+    });
+  }
+});
+
+app.get('/api/blockchain/transaction/:hash/receipt', async (req, res) => {
+  const { hash } = req.params;
+  console.log(`Fetching transaction receipt: ${hash}`);
+  
+  try {
+    const receipt = await blockchainIntegration.getTransactionReceipt(hash);
+    res.json(receipt);
+  } catch (error) {
+    console.error(`Error fetching transaction receipt ${hash}:`, error);
+    res.status(500).json({
+      error: 'Failed to fetch transaction receipt',
+      message: error.message
+    });
+  }
+});
+
+app.get('/api/blockchain/current-block', async (req, res) => {
+  console.log('Fetching current block number');
+  
+  try {
+    const blockNumber = await blockchainIntegration.getCurrentBlock();
+    res.json({ blockNumber, timestamp: Date.now() });
+  } catch (error) {
+    console.error('Error fetching current block:', error);
+    res.status(500).json({
+      error: 'Failed to fetch current block',
+      message: error.message
+    });
+  }
+});
+
+// Real Protocol Integration Routes
+app.use('/api/protocols', realProtocolIntegration);
+
+// Real User Behavior Analysis Routes
+app.get('/api/blockchain/user-behavior-profile/:address', async (req, res) => {
+  const { address } = req.params;
+  console.log(`Fetching user behavior profile for address: ${address}`);
+  
+  try {
+    const behaviorProfile = await blockchainIntegration.getUserBehaviorProfile(address);
+    res.json(behaviorProfile);
+  } catch (error) {
+    console.error(`Error fetching user behavior profile for ${address}:`, error);
+    res.status(500).json({
+      error: 'Failed to fetch user behavior profile',
+      message: error.message
+    });
+  }
+});
+
+app.get('/api/blockchain/staking-behavior/:address', async (req, res) => {
+  const { address } = req.params;
+  const { timeframe } = req.query;
+  console.log(`Fetching staking behavior for address: ${address}, timeframe: ${timeframe}`);
+  
+  try {
+    const stakingBehavior = await blockchainIntegration.getStakingBehavior(address, timeframe);
+    res.json(stakingBehavior);
+  } catch (error) {
+    console.error(`Error fetching staking behavior for ${address}:`, error);
+    res.status(500).json({
+      error: 'Failed to fetch staking behavior',
+      message: error.message
+    });
+  }
+});
+
+app.get('/api/blockchain/liquidation-risk/:address', async (req, res) => {
+  const { address } = req.params;
+  console.log(`Fetching liquidation risk for address: ${address}`);
+  
+  try {
+    const liquidationRisk = await blockchainIntegration.getLiquidationRisk(address);
+    res.json(liquidationRisk);
+  } catch (error) {
+    console.error(`Error fetching liquidation risk for ${address}:`, error);
+    res.status(500).json({
+      error: 'Failed to fetch liquidation risk',
+      message: error.message
+    });
+  }
+});
+
+app.get('/api/blockchain/transaction-patterns/:address', async (req, res) => {
+  const { address } = req.params;
+  console.log(`Fetching transaction patterns for address: ${address}`);
+  
+  try {
+    const transactionPatterns = await blockchainIntegration.getTransactionPatterns(address);
+    res.json(transactionPatterns);
+  } catch (error) {
+    console.error(`Error fetching transaction patterns for ${address}:`, error);
+    res.status(500).json({
+      error: 'Failed to fetch transaction patterns',
+      message: error.message
+    });
+  }
+});
+
+app.get('/api/blockchain/behavior-insights/:address', async (req, res) => {
+  const { address } = req.params;
+  console.log(`Fetching behavior insights for address: ${address}`);
+  
+  try {
+    const behaviorInsights = await blockchainIntegration.getBehaviorInsights(address);
+    res.json(behaviorInsights);
+  } catch (error) {
+    console.error(`Error fetching behavior insights for ${address}:`, error);
+    res.status(500).json({
+      error: 'Failed to fetch behavior insights',
+      message: error.message
+    });
+  }
+});
+
+app.get('/api/blockchain/staking-rewards/:address', async (req, res) => {
+  const { address } = req.params;
+  const { timeframe } = req.query;
+  console.log(`Fetching staking rewards for address: ${address}, timeframe: ${timeframe}`);
+  
+  try {
+    const stakingRewards = await blockchainIntegration.getStakingRewards(address, timeframe);
+    res.json(stakingRewards);
+  } catch (error) {
+    console.error(`Error fetching staking rewards for ${address}:`, error);
+    res.status(500).json({
+      error: 'Failed to fetch staking rewards',
+      message: error.message
+    });
+  }
+});
+
+app.get('/api/blockchain/liquidation-history/:address', async (req, res) => {
+  const { address } = req.params;
+  console.log(`Fetching liquidation history for address: ${address}`);
+  
+  try {
+    const liquidationHistory = await blockchainIntegration.getLiquidationHistory(address);
+    res.json(liquidationHistory);
+  } catch (error) {
+    console.error(`Error fetching liquidation history for ${address}:`, error);
+    res.status(500).json({
+      error: 'Failed to fetch liquidation history',
+      message: error.message
+    });
+  }
+});
+
+app.get('/api/blockchain/liquidation-events/:address', async (req, res) => {
+  const { address } = req.params;
+  const { timeframe } = req.query;
+  console.log(`Fetching liquidation events for address: ${address}, timeframe: ${timeframe}`);
+  
+  try {
+    const liquidationEvents = await blockchainIntegration.getLiquidationEvents(address, timeframe);
+    res.json(liquidationEvents);
+  } catch (error) {
+    console.error(`Error fetching liquidation events for ${address}:`, error);
+    res.status(500).json({
+      error: 'Failed to fetch liquidation events',
+      message: error.message
+    });
+  }
+});
+
+app.get('/api/blockchain/gas-efficiency/:address', async (req, res) => {
+  const { address } = req.params;
+  console.log(`Fetching gas efficiency metrics for address: ${address}`);
+  
+  try {
+    const gasEfficiency = await blockchainIntegration.getGasEfficiencyMetrics(address);
+    res.json(gasEfficiency);
+  } catch (error) {
+    console.error(`Error fetching gas efficiency for ${address}:`, error);
+    res.status(500).json({
+      error: 'Failed to fetch gas efficiency metrics',
+      message: error.message
+    });
+  }
+});
+
+app.get('/api/blockchain/protocol-usage-patterns/:address', async (req, res) => {
+  const { address } = req.params;
+  const { timeframe } = req.query;
+  console.log(`Fetching protocol usage patterns for address: ${address}, timeframe: ${timeframe}`);
+  
+  try {
+    const usagePatterns = await blockchainIntegration.getProtocolUsagePatterns(address, timeframe);
+    res.json(usagePatterns);
+  } catch (error) {
+    console.error(`Error fetching protocol usage patterns for ${address}:`, error);
+    res.status(500).json({
+      error: 'Failed to fetch protocol usage patterns',
+      message: error.message
+    });
+  }
+});
+
+app.get('/api/blockchain/transaction-frequency/:address', async (req, res) => {
+  const { address } = req.params;
+  console.log(`Fetching transaction frequency for address: ${address}`);
+  
+  try {
+    const transactionFrequency = await blockchainIntegration.getTransactionFrequency(address);
+    res.json(transactionFrequency);
+  } catch (error) {
+    console.error(`Error fetching transaction frequency for ${address}:`, error);
+    res.status(500).json({
+      error: 'Failed to fetch transaction frequency',
+      message: error.message
+    });
+  }
+});
+
+app.get('/api/blockchain/behavior-score/:address', async (req, res) => {
+  const { address } = req.params;
+  console.log(`Fetching behavior score for address: ${address}`);
+  
+  try {
+    const behaviorScore = await blockchainIntegration.getBehaviorScore(address);
+    res.json(behaviorScore);
+  } catch (error) {
+    console.error(`Error fetching behavior score for ${address}:`, error);
+    res.status(500).json({
+      error: 'Failed to fetch behavior score',
+      message: error.message
+    });
+  }
+});
+
 // Protocol Integration Routes
 app.get('/api/protocol/credit-score', (req, res) => {
   const { address } = req.query;
@@ -314,7 +597,7 @@ app.use((req, res) => {
   });
 });
 
-app.listen(PORT, () => {
+app.listen(PORT, async () => {
   console.log(`
 ========================================
 🚀 CryptoVault API Gateway Started
@@ -330,6 +613,34 @@ Available Endpoints:
 - POST /api/zk-proofs/generate
 - GET  /api/achievements/:address
 - GET  /api/social-credit/:address
+- GET  /api/blockchain/status
+- POST /api/blockchain/health-check
+- GET  /api/blockchain/transaction/:hash
+- GET  /api/blockchain/transaction/:hash/receipt
+- GET  /api/blockchain/current-block
 ========================================
   `);
+
+  // Initialize blockchain integration service
+  console.log('🔗 Initializing blockchain integration...');
+  try {
+    await blockchainIntegration.initialize();
+    console.log('✅ Blockchain integration ready');
+  } catch (error) {
+    console.error('❌ Failed to initialize blockchain integration:', error.message);
+    console.log('⚠️ API will continue without real blockchain data');
+  }
+});
+
+// Graceful shutdown
+process.on('SIGTERM', async () => {
+  console.log('🛑 Received SIGTERM, shutting down gracefully...');
+  await blockchainIntegration.disconnect();
+  process.exit(0);
+});
+
+process.on('SIGINT', async () => {
+  console.log('🛑 Received SIGINT, shutting down gracefully...');
+  await blockchainIntegration.disconnect();
+  process.exit(0);
 });

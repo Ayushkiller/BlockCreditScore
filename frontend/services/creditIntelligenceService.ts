@@ -1,6 +1,8 @@
 // Credit Intelligence Service
 // This service would connect to your deployed smart contracts and backend services
 
+import { url } from "inspector";
+
 export interface CreditProfile {
   address: string;
   linkedWallets: string[];
@@ -138,21 +140,155 @@ class CreditIntelligenceService {
   private baseUrl: string;
   private contractAddress: string;
   private web3Provider: any;
+  private wsConnection: WebSocket | null = null;
+  private eventListeners: Map<string, Set<Function>> = new Map();
 
   constructor() {
     this.baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
     this.contractAddress = process.env.NEXT_PUBLIC_CONTRACT_ADDRESS || '';
+    this.initializeWebSocketConnection();
+  }
+
+  /**
+   * Initialize WebSocket connection for real-time transaction updates
+   */
+  private initializeWebSocketConnection(): void {
+    try {
+      const wsUrl = this.baseUrl.replace('http', 'ws') + '/ws/transactions';
+      this.wsConnection = new WebSocket(wsUrl);
+
+      this.wsConnection.onopen = () => {
+        console.log('🔗 WebSocket connection established for real-time transaction updates');
+      };
+
+      this.wsConnection.onmessage = (event) => {
+        try {
+          const data = JSON.parse(event.data);
+          this.handleRealtimeUpdate(data);
+        } catch (error) {
+          console.error('Error parsing WebSocket message:', error);
+        }
+      };
+
+      this.wsConnection.onclose = () => {
+        console.log('🔌 WebSocket connection closed, attempting to reconnect...');
+        setTimeout(() => this.initializeWebSocketConnection(), 5000);
+      };
+
+      this.wsConnection.onerror = (error) => {
+        console.error('WebSocket error:', error);
+      };
+    } catch (error) {
+      console.error('Failed to initialize WebSocket connection:', error);
+    }
+  }
+
+  /**
+   * Handle real-time updates from blockchain data manager and market data services
+   */
+  private handleRealtimeUpdate(data: any): void {
+    const { type, payload } = data;
+
+    switch (type) {
+      case 'transactionDetected':
+        this.notifyListeners('transactionDetected', payload);
+        break;
+      case 'transactionConfirmed':
+        this.notifyListeners('transactionConfirmed', payload);
+        break;
+      case 'eventDetected':
+        this.notifyListeners('eventDetected', payload);
+        break;
+      case 'scoreUpdate':
+        this.notifyListeners('scoreUpdate', payload);
+        break;
+      case 'blockchainStatus':
+        this.notifyListeners('blockchainStatus', payload);
+        break;
+      case 'priceUpdate':
+        this.notifyListeners('priceUpdate', payload);
+        break;
+      case 'marketDataStatus':
+        this.notifyListeners('marketDataStatus', payload);
+        break;
+      case 'volatilityAlert':
+        this.notifyListeners('volatilityAlert', payload);
+        break;
+      case 'priceFeedError':
+        this.notifyListeners('priceFeedError', payload);
+        break;
+      default:
+        console.log('Unknown real-time update type:', type);
+    }
+  }
+
+  /**
+   * Subscribe to real-time updates
+   */
+  subscribe(eventType: string, callback: Function): () => void {
+    if (!this.eventListeners.has(eventType)) {
+      this.eventListeners.set(eventType, new Set());
+    }
+    this.eventListeners.get(eventType)!.add(callback);
+
+    return () => {
+      const listeners = this.eventListeners.get(eventType);
+      if (listeners) {
+        listeners.delete(callback);
+      }
+    };
+  }
+
+  /**
+   * Notify all listeners of an event
+   */
+  private notifyListeners(eventType: string, data: any): void {
+    const listeners = this.eventListeners.get(eventType);
+    if (listeners) {
+      listeners.forEach(callback => {
+        try {
+          callback(data);
+        } catch (error) {
+          console.error(`Error in event listener for ${eventType}:`, error);
+        }
+      });
+    }
   }
 
   // Credit Profile Methods
   async getCreditProfile(address: string): Promise<CreditProfile | null> {
     try {
-      // In real implementation, this would call your smart contract and backend services
+      // Fetch real credit profile from blockchain data manager
       const response = await fetch(`${this.baseUrl}/api/credit-profile/${address}`);
+      if (!response.ok) return null;
+
+      const profile = await response.json();
+
+      // Enhance with real-time transaction data
+      const realtimeData = await this.getRealTimeTransactionData(address);
+      if (realtimeData) {
+        profile.realtimeTransactions = realtimeData.transactions;
+        profile.realtimeEvents = realtimeData.events;
+        profile.lastBlockUpdate = realtimeData.currentBlock;
+      }
+
+      return profile;
+    } catch (error) {
+      console.error('Error fetching credit profile:', error);
+      return null;
+    }
+  }
+
+  /**
+   * Get real-time transaction data for an address
+   */
+  async getRealTimeTransactionData(address: string): Promise<any> {
+    try {
+      const response = await fetch(`${this.baseUrl}/api/blockchain/transactions/${address}`);
       if (!response.ok) return null;
       return await response.json();
     } catch (error) {
-      console.error('Error fetching credit profile:', error);
+      console.error('Error fetching real-time transaction data:', error);
       return null;
     }
   }
@@ -174,11 +310,38 @@ class CreditIntelligenceService {
   // Analytics Methods
   async getAnalytics(address: string, timeframe: string = '30d'): Promise<AnalyticsData | null> {
     try {
+      // Fetch analytics with real transaction data
       const response = await fetch(`${this.baseUrl}/api/analytics/${address}?timeframe=${timeframe}`);
+      if (!response.ok) return null;
+
+      const analytics = await response.json();
+
+      // Enhance with real blockchain metrics
+      const blockchainMetrics = await this.getBlockchainMetrics(address, timeframe);
+      if (blockchainMetrics) {
+        analytics.realTransactionMetrics = blockchainMetrics.transactions;
+        analytics.realProtocolInteractions = blockchainMetrics.protocols;
+        analytics.realEventHistory = blockchainMetrics.events;
+        analytics.gasAnalysis = blockchainMetrics.gasUsage;
+      }
+
+      return analytics;
+    } catch (error) {
+      console.error('Error fetching analytics:', error);
+      return null;
+    }
+  }
+
+  /**
+   * Get real blockchain metrics for analytics
+   */
+  async getBlockchainMetrics(address: string, timeframe: string): Promise<any> {
+    try {
+      const response = await fetch(`${this.baseUrl}/api/blockchain/metrics/${address}?timeframe=${timeframe}`);
       if (!response.ok) return null;
       return await response.json();
     } catch (error) {
-      console.error('Error fetching analytics:', error);
+      console.error('Error fetching blockchain metrics:', error);
       return null;
     }
   }
@@ -294,17 +457,783 @@ class CreditIntelligenceService {
 
   // Real-time Monitoring Methods
   async subscribeToScoreUpdates(address: string, callback: (update: any) => void): Promise<() => void> {
-    // In real implementation, this would use WebSocket or Server-Sent Events
-    const eventSource = new EventSource(`${this.baseUrl}/api/score-updates/${address}`);
-    
-    eventSource.onmessage = (event) => {
-      const update = JSON.parse(event.data);
-      callback(update);
-    };
+    // Subscribe to real-time score updates via WebSocket
+    return this.subscribe('scoreUpdate', (data: any) => {
+      if (data.address === address) {
+        callback(data);
+      }
+    });
+  }
 
-    return () => {
-      eventSource.close();
+  /**
+   * Subscribe to real-time transaction updates for an address
+   */
+  async subscribeToTransactionUpdates(address: string, callback: (transaction: any) => void): Promise<() => void> {
+    // Request monitoring for this address
+    if (this.wsConnection && this.wsConnection.readyState === WebSocket.OPEN) {
+      this.wsConnection.send(JSON.stringify({
+        type: 'monitorAddress',
+        address: address
+      }));
+    }
+
+    return this.subscribe('transactionDetected', (data: any) => {
+      if (data.transaction.from === address || data.transaction.to === address) {
+        callback(data.transaction);
+      }
+    });
+  }
+
+  /**
+   * Subscribe to real-time blockchain events
+   */
+  async subscribeToBlockchainEvents(callback: (event: any) => void): Promise<() => void> {
+    return this.subscribe('eventDetected', callback);
+  }
+
+  /**
+   * Subscribe to blockchain connection status updates
+   */
+  async subscribeToConnectionStatus(callback: (status: any) => void): Promise<() => void> {
+    return this.subscribe('blockchainStatus', callback);
+  }
+
+  /**
+   * Get current blockchain connection status
+   */
+  async getBlockchainStatus(): Promise<any> {
+    try {
+      const response = await fetch(`${this.baseUrl}/api/blockchain/status`);
+      if (!response.ok) return null;
+      return await response.json();
+    } catch (error) {
+      console.error('Error fetching blockchain status:', error);
+      return null;
+    }
+  }
+
+  /**
+   * Get transaction monitoring statistics
+   */
+  async getTransactionMonitoringStats(): Promise<any> {
+    try {
+      const response = await fetch(`${this.baseUrl}/api/blockchain/monitoring/stats`);
+      if (!response.ok) return null;
+      return await response.json();
+    } catch (error) {
+      console.error('Error fetching monitoring stats:', error);
+      return null;
+    }
+  }
+
+  /**
+   * Get recent blockchain events
+   */
+  async getRecentEvents(limit: number = 50): Promise<any[]> {
+    try {
+      const response = await fetch(`${this.baseUrl}/api/blockchain/events/recent?limit=${limit}`);
+      if (!response.ok) return [];
+      return await response.json();
+    } catch (error) {
+      console.error('Error fetching recent events:', error);
+      return [];
+    }
+  }
+
+  /**
+   * Get pending transactions
+   */
+  async getPendingTransactions(): Promise<any[]> {
+    try {
+      const response = await fetch(`${this.baseUrl}/api/blockchain/transactions/pending`);
+      if (!response.ok) return [];
+      return await response.json();
+    } catch (error) {
+      console.error('Error fetching pending transactions:', error);
+      return [];
+    }
+  }
+
+  /**
+   * Get confirmed transactions for an address
+   */
+  async getConfirmedTransactions(address: string, limit: number = 100): Promise<any[]> {
+    try {
+      const response = await fetch(`${this.baseUrl}/api/blockchain/transactions/confirmed/${address}?limit=${limit}`);
+      if (!response.ok) return [];
+      return await response.json();
+    } catch (error) {
+      console.error('Error fetching confirmed transactions:', error);
+      return [];
+    }
+  }
+
+  // Real Market Data Integration Methods
+
+  /**
+   * Get real-time price data using integrated price feed service
+   */
+  async getRealTimePrice(symbol: string): Promise<any> {
+    try {
+      const response = await fetch(`${this.baseUrl}/api/market-data/price/${symbol}`);
+      if (!response.ok) return null;
+      return await response.json();
+    } catch (error) {
+      console.error('Error fetching real-time price:', error);
+      return null;
+    }
+  }
+
+  /**
+   * Get multiple real-time prices in batch
+   */
+  async getBatchRealTimePrices(symbols: string[]): Promise<any> {
+    try {
+      const response = await fetch(`${this.baseUrl}/api/market-data/prices/batch`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ symbols })
+      });
+      if (!response.ok) return {};
+      return await response.json();
+    } catch (error) {
+      console.error('Error fetching batch real-time prices:', error);
+      return {};
+    }
+  }
+
+  /**
+   * Get historical price data from CoinGecko
+   */
+  async getHistoricalPrices(symbol: string, days: number = 30): Promise<any[]> {
+    try {
+      const response = await fetch(`${this.baseUrl}/api/market-data/historical/${symbol}?days=${days}`);
+      if (!response.ok) return [];
+      return await response.json();
+    } catch (error) {
+      console.error('Error fetching historical prices:', error);
+      return [];
+    }
+  }
+
+  /**
+   * Convert token amount to USD using real-time prices
+   */
+  async convertToUSD(tokenSymbol: string, amount: string, decimals: number = 18): Promise<number> {
+    try {
+      const response = await fetch(`${this.baseUrl}/api/market-data/convert-to-usd`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ tokenSymbol, amount, decimals })
+      });
+      if (!response.ok) return 0;
+      const result = await response.json();
+      return result.usdValue || 0;
+    } catch (error) {
+      console.error('Error converting to USD:', error);
+      return 0;
+    }
+  }
+
+  /**
+   * Subscribe to real-time price updates
+   */
+  async subscribeToRealTimePriceUpdates(
+    symbol: string,
+    callback: (priceData: any) => void
+  ): Promise<() => void> {
+    // Request price monitoring for this symbol
+    if (this.wsConnection && this.wsConnection.readyState === WebSocket.OPEN) {
+      this.wsConnection.send(JSON.stringify({
+        type: 'subscribePriceUpdates',
+        symbol: symbol
+      }));
+    }
+
+    return this.subscribe('priceUpdate', (data: any) => {
+      if (data.symbol === symbol) {
+        callback(data);
+      }
+    });
+  }
+
+  /**
+   * Get market data service status
+   */
+  async getMarketDataStatus(): Promise<any> {
+    try {
+      const response = await fetch(`${this.baseUrl}/api/market-data/status`);
+      if (!response.ok) return null;
+      return await response.json();
+    } catch (error) {
+      console.error('Error fetching market data status:', error);
+      return null;
+    }
+  }
+
+  /**
+   * Get supported tokens for price feeds
+   */
+  async getSupportedTokens(): Promise<string[]> {
+    try {
+      const response = await fetch(`${this.baseUrl}/api/market-data/supported-tokens`);
+      if (!response.ok) return [];
+      const result = await response.json();
+      return result.tokens || [];
+    } catch (error) {
+      console.error('Error fetching supported tokens:', error);
+      return [];
+    }
+  }
+
+  /**
+   * Get price feed health check
+   */
+  async getPriceFeedHealthCheck(): Promise<any> {
+    try {
+      const response = await fetch(`${this.baseUrl}/api/market-data/health-check`);
+      if (!response.ok) return null;
+      return await response.json();
+    } catch (error) {
+      console.error('Error fetching price feed health check:', error);
+      return null;
+    }
+  }
+
+  // Real DeFi Market Data Integration Methods
+
+  /**
+   * Get TVL data for a specific protocol from DefiLlama
+   */
+  async getProtocolTVL(protocol: string): Promise<any> {
+    try {
+      const response = await fetch(`${this.baseUrl}/api/market-data/tvl/${protocol}`);
+      if (!response.ok) return null;
+      return await response.json();
+    } catch (error) {
+      console.error(`Error fetching TVL for ${protocol}:`, error);
+      return null;
+    }
+  }
+
+  /**
+   * Get Fear & Greed Index for market sentiment
+   */
+  async getFearGreedIndex(): Promise<any> {
+    try {
+      const response = await fetch(`${this.baseUrl}/api/market-data/fear-greed-index`);
+      if (!response.ok) return null;
+      return await response.json();
+    } catch (error) {
+      console.error('Error fetching Fear & Greed Index:', error);
+      return null;
+    }
+  }
+
+  /**
+   * Get protocol yield data from Aave, Compound, and other DeFi protocols
+   */
+  async getProtocolYields(protocol?: string): Promise<any[]> {
+    try {
+      const url = protocol
+        ? `${this.baseUrl}/api/market-data/protocol-yields?protocol=${protocol}`
+        : `${this.baseUrl}/api/market-data/protocol-yields`;
+
+      const response = await fetch(url);
+      if (!response.ok) return [];
+      return await response.json();
+    } catch (error) {
+      console.error('Error fetching protocol yields:', error);
+      return [];
+    }
+  }
+
+  /**
+   * Calculate market volatility for an asset
+   */
+  async calculateMarketVolatility(asset: string, historicalPrices: any[]): Promise<any> {
+    try {
+      const response = await fetch(`${this.baseUrl}/api/market-data/market-volatility`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ asset, historicalPrices })
+      });
+      if (!response.ok) return null;
+      return await response.json();
+    } catch (error) {
+      console.error('Error calculating market volatility:', error);
+      return null;
+    }
+  }
+
+  /**
+   * Get comprehensive market data (TVL, yields, sentiment, volatility)
+   */
+  async getAllMarketData(): Promise<any> {
+    try {
+      const response = await fetch(`${this.baseUrl}/api/market-data/all-market-data`);
+      if (!response.ok) return null;
+      return await response.json();
+    } catch (error) {
+      console.error('Error fetching all market data:', error);
+      return null;
+    }
+  }
+
+  /**
+   * Subscribe to market data updates
+   */
+  async subscribeToMarketDataUpdates(callback: (data: any) => void): Promise<() => void> {
+    // Request market data monitoring
+    if (this.wsConnection && this.wsConnection.readyState === WebSocket.OPEN) {
+      this.wsConnection.send(JSON.stringify({
+        type: 'subscribeMarketData'
+      }));
+    }
+
+    return this.subscribe('marketDataUpdate', callback);
+  }
+
+  /**
+   * Get market sentiment analysis incorporating Fear & Greed Index
+   */
+  async getMarketSentimentAnalysis(): Promise<any> {
+    try {
+      const [fearGreed, volatilityETH, volatilityBTC] = await Promise.all([
+        this.getFearGreedIndex(),
+        this.getHistoricalPrices('ETH', 30).then(prices =>
+          this.calculateMarketVolatility('ETH', prices)
+        ),
+        this.getHistoricalPrices('BTC', 30).then(prices =>
+          this.calculateMarketVolatility('BTC', prices)
+        )
+      ]);
+
+      return {
+        fearGreedIndex: fearGreed,
+        volatility: {
+          ETH: volatilityETH,
+          BTC: volatilityBTC
+        },
+        overallSentiment: this.calculateOverallSentiment(fearGreed, volatilityETH, volatilityBTC),
+        timestamp: Date.now()
+      };
+    } catch (error) {
+      console.error('Error getting market sentiment analysis:', error);
+      return null;
+    }
+  }
+
+  /**
+   * Calculate overall market sentiment score
+   */
+  private calculateOverallSentiment(fearGreed: any, ethVolatility: any, btcVolatility: any): any {
+    if (!fearGreed) return null;
+
+    let sentimentScore = fearGreed.value; // Base score from Fear & Greed (0-100)
+
+    // Adjust based on volatility
+    if (ethVolatility && btcVolatility) {
+      const avgVolatility = (ethVolatility.volatility30d + btcVolatility.volatility30d) / 2;
+
+      // High volatility reduces sentiment score
+      if (avgVolatility > 80) {
+        sentimentScore = Math.max(0, sentimentScore - 20);
+      } else if (avgVolatility > 60) {
+        sentimentScore = Math.max(0, sentimentScore - 10);
+      }
+    }
+
+    // Determine sentiment classification
+    let classification = 'Neutral';
+    if (sentimentScore <= 20) classification = 'Extreme Fear';
+    else if (sentimentScore <= 40) classification = 'Fear';
+    else if (sentimentScore >= 80) classification = 'Extreme Greed';
+    else if (sentimentScore >= 60) classification = 'Greed';
+
+    return {
+      score: sentimentScore,
+      classification,
+      factors: {
+        fearGreedIndex: fearGreed.value,
+        volatilityAdjustment: ethVolatility && btcVolatility ?
+          (ethVolatility.volatility30d + btcVolatility.volatility30d) / 2 : 0
+      }
     };
+  }
+
+  // Real DeFi Protocol Integration Methods
+
+  /**
+   * Get real Aave V3 positions for a user
+   */
+  async getAavePositions(address: string): Promise<any[]> {
+    try {
+      const response = await fetch(`${this.baseUrl}/api/protocols/aave/positions/${address}`);
+      if (!response.ok) return [];
+      return await response.json();
+    } catch (error) {
+      console.error('Error fetching Aave positions:', error);
+      return [];
+    }
+  }
+
+  /**
+   * Get real Compound positions for a user
+   */
+  async getCompoundPositions(address: string): Promise<any[]> {
+    try {
+      const response = await fetch(`${this.baseUrl}/api/protocols/compound/positions/${address}`);
+      if (!response.ok) return [];
+      return await response.json();
+    } catch (error) {
+      console.error('Error fetching Compound positions:', error);
+      return [];
+    }
+  }
+
+  /**
+   * Get real protocol statistics (TVL, utilization rates, etc.)
+   */
+  async getProtocolStatistics(): Promise<any> {
+    try {
+      const response = await fetch(`${this.baseUrl}/api/protocols/statistics`);
+      if (!response.ok) return {};
+      return await response.json();
+    } catch (error) {
+      console.error('Error fetching protocol statistics:', error);
+      return {};
+    }
+  }
+
+  /**
+   * Get real protocol yield data
+   */
+  async getProtocolYieldData(): Promise<any> {
+    try {
+      const response = await fetch(`${this.baseUrl}/api/protocols/yields`);
+      if (!response.ok) return {};
+      return await response.json();
+    } catch (error) {
+      console.error('Error fetching protocol yield data:', error);
+      return {};
+    }
+  }
+
+  /**
+   * Get real protocol interaction history for a user
+   */
+  async getProtocolInteractionHistory(address: string, timeframe: string = '30d'): Promise<any[]> {
+    try {
+      const response = await fetch(`${this.baseUrl}/api/protocols/interactions/${address}?timeframe=${timeframe}`);
+      if (!response.ok) return [];
+      return await response.json();
+    } catch (error) {
+      console.error('Error fetching protocol interaction history:', error);
+      return [];
+    }
+  }
+
+  /**
+   * Get real Uniswap V3 pool information
+   */
+  async getUniswapPoolInfo(poolAddress: string): Promise<any> {
+    try {
+      const response = await fetch(`${this.baseUrl}/api/protocols/uniswap/pool/${poolAddress}`);
+      if (!response.ok) return null;
+      return await response.json();
+    } catch (error) {
+      console.error('Error fetching Uniswap pool info:', error);
+      return null;
+    }
+  }
+
+  /**
+   * Get real Chainlink price data
+   */
+  async getChainlinkPrice(feedAddress: string): Promise<any> {
+    try {
+      const response = await fetch(`${this.baseUrl}/api/protocols/chainlink/price/${feedAddress}`);
+      if (!response.ok) return null;
+      return await response.json();
+    } catch (error) {
+      console.error('Error fetching Chainlink price:', error);
+      return null;
+    }
+  }
+
+  /**
+   * Decode real transaction data using contract ABIs
+   */
+  async decodeTransactionData(txData: string, contractAddress: string): Promise<any> {
+    try {
+      const response = await fetch(`${this.baseUrl}/api/protocols/decode-transaction`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ txData, contractAddress })
+      });
+      if (!response.ok) return null;
+      return await response.json();
+    } catch (error) {
+      console.error('Error decoding transaction data:', error);
+      return null;
+    }
+  }
+
+  /**
+   * Get real protocol TVL data
+   */
+  async getProtocolTVLData(): Promise<any> {
+    try {
+      const response = await fetch(`${this.baseUrl}/api/protocols/tvl`);
+      if (!response.ok) return {};
+      return await response.json();
+    } catch (error) {
+      console.error('Error fetching protocol TVL data:', error);
+      return {};
+    }
+  }
+
+  // Real User Behavior Analysis Methods
+
+  /**
+   * Get user transaction profile from real transaction credit analyzer
+   */
+  async getUserTransactionProfile(address: string): Promise<any> {
+    try {
+      const response = await fetch(`${this.baseUrl}/api/blockchain/user-transaction-profile/${address}`);
+      if (!response.ok) return null;
+      return await response.json();
+    } catch (error) {
+      console.error('Error fetching user transaction profile:', error);
+      return null;
+    }
+  }
+
+  /**
+   * Get comprehensive user behavior profile using real blockchain data
+   */
+  async getUserBehaviorProfile(address: string): Promise<any> {
+    try {
+      const response = await fetch(`${this.baseUrl}/api/blockchain/user-behavior-profile/${address}`);
+      if (!response.ok) return null;
+      return await response.json();
+    } catch (error) {
+      console.error('Error fetching user behavior profile:', error);
+      return null;
+    }
+  }
+
+  /**
+   * Get real staking behavior analysis using actual staking contract events
+   */
+  async getStakingBehaviorAnalysis(address: string, timeframe?: string): Promise<any> {
+    try {
+      const url = timeframe
+        ? `${this.baseUrl}/api/blockchain/staking-behavior/${address}?timeframe=${timeframe}`
+        : `${this.baseUrl}/api/blockchain/staking-behavior/${address}`;
+
+      const response = await fetch(url);
+      if (!response.ok) return null;
+      return await response.json();
+    } catch (error) {
+      console.error('Error fetching staking behavior analysis:', error);
+      return null;
+    }
+  }
+
+  /**
+   * Get real liquidation risk indicators using actual lending protocol events
+   */
+  async getLiquidationRiskIndicators(address: string): Promise<any> {
+    try {
+      const response = await fetch(`${this.baseUrl}/api/blockchain/liquidation-risk/${address}`);
+      if (!response.ok) return null;
+      return await response.json();
+    } catch (error) {
+      console.error('Error fetching liquidation risk indicators:', error);
+      return null;
+    }
+  }
+
+  /**
+   * Get real transaction pattern analysis using actual blockchain data
+   */
+  async getTransactionPatternAnalysis(address: string): Promise<any> {
+    try {
+      const response = await fetch(`${this.baseUrl}/api/blockchain/transaction-patterns/${address}`);
+      if (!response.ok) return null;
+      return await response.json();
+    } catch (error) {
+      console.error('Error fetching transaction pattern analysis:', error);
+      return null;
+    }
+  }
+
+  /**
+   * Get user behavior insights based on real blockchain analysis
+   */
+  async getUserBehaviorInsights(address: string): Promise<any> {
+    try {
+      const response = await fetch(`${this.baseUrl}/api/blockchain/behavior-insights/${address}`);
+      if (!response.ok) return null;
+      return await response.json();
+    } catch (error) {
+      console.error('Error fetching user behavior insights:', error);
+      return null;
+    }
+  }
+
+  /**
+   * Get staking rewards history from real staking contracts
+   */
+  async getStakingRewardsHistory(address: string, timeframe?: string): Promise<any[]> {
+    try {
+      const url = timeframe
+        ? `${this.baseUrl}/api/blockchain/staking-rewards/${address}?timeframe=${timeframe}`
+        : `${this.baseUrl}/api/blockchain/staking-rewards/${address}`;
+
+      const response = await fetch(url);
+      if (!response.ok) return [];
+      return await response.json();
+    } catch (error) {
+      console.error('Error fetching staking rewards history:', error);
+      return [];
+    }
+  }
+
+  /**
+   * Get liquidation history from real lending protocols
+   */
+  async getLiquidationHistory(address: string): Promise<any[]> {
+    try {
+      const response = await fetch(`${this.baseUrl}/api/blockchain/liquidation-history/${address}`);
+      if (!response.ok) return [];
+      return await response.json();
+    } catch (error) {
+      console.error('Error fetching liquidation history:', error);
+      return [];
+    }
+  }
+
+  /**
+   * Get liquidation events for a specific timeframe
+   */
+  async getLiquidationEvents(address: string, timeframe: string): Promise<any[]> {
+    try {
+      const response = await fetch(`${this.baseUrl}/api/blockchain/liquidation-events/${address}?timeframe=${timeframe}`);
+      if (!response.ok) return [];
+      return await response.json();
+    } catch (error) {
+      console.error('Error fetching liquidation events:', error);
+      return [];
+    }
+  }
+
+  /**
+   * Get gas efficiency metrics for a user
+   */
+  async getGasEfficiencyMetrics(address: string): Promise<any> {
+    try {
+      const response = await fetch(`${this.baseUrl}/api/blockchain/gas-efficiency/${address}`);
+      if (!response.ok) return null;
+      return await response.json();
+    } catch (error) {
+      console.error('Error fetching gas efficiency metrics:', error);
+      return null;
+    }
+  }
+
+  /**
+   * Get protocol usage patterns for a user
+   */
+  async getProtocolUsagePatterns(address: string, timeframe: string): Promise<any> {
+    try {
+      const response = await fetch(`${this.baseUrl}/api/blockchain/protocol-usage-patterns/${address}?timeframe=${timeframe}`);
+      if (!response.ok) return null;
+      return await response.json();
+    } catch (error) {
+      console.error('Error fetching protocol usage patterns:', error);
+      return null;
+    }
+  }
+
+  /**
+   * Get real transaction frequency analysis
+   */
+  async getTransactionFrequencyAnalysis(address: string): Promise<any> {
+    try {
+      const response = await fetch(`${this.baseUrl}/api/blockchain/transaction-frequency/${address}`);
+      if (!response.ok) return null;
+      return await response.json();
+    } catch (error) {
+      console.error('Error fetching transaction frequency analysis:', error);
+      return null;
+    }
+  }
+
+  /**
+   * Get real user behavior score incorporating all analysis
+   */
+  async getUserBehaviorScore(address: string): Promise<any> {
+    try {
+      const response = await fetch(`${this.baseUrl}/api/blockchain/behavior-score/${address}`);
+      if (!response.ok) return null;
+      return await response.json();
+    } catch (error) {
+      console.error('Error fetching user behavior score:', error);
+      return null;
+    }
+  }
+
+  /**
+   * Subscribe to real-time user behavior updates
+   */
+  async subscribeToUserBehaviorUpdates(
+    address: string,
+    callback: (behaviorUpdate: any) => void
+  ): Promise<() => void> {
+    // Request behavior monitoring for this address
+    if (this.wsConnection && this.wsConnection.readyState === WebSocket.OPEN) {
+      this.wsConnection.send(JSON.stringify({
+        type: 'monitorUserBehavior',
+        address: address
+      }));
+    }
+
+    return this.subscribe('userBehaviorUpdate', (data: any) => {
+      if (data.address === address) {
+        callback(data);
+      }
+    });
+  }
+
+  /**
+   * Subscribe to real-time staking behavior updates
+   */
+  async subscribeToStakingBehaviorUpdates(
+    address: string,
+    callback: (stakingUpdate: any) => void
+  ): Promise<() => void> {
+    return this.subscribe('stakingBehaviorUpdate', (data: any) => {
+      if (data.address === address) {
+        callback(data);
+      }
+    });
+  }
+
+  /**
+   * Subscribe to real-time liquidation risk updates
+   */
+  async subscribeToLiquidationRiskUpdates(
+    address: string,
+    callback: (riskUpdate: any) => void
+  ): Promise<() => void> {
+    return this.subscribe('liquidationRiskUpdate', (data: any) => {
+      if (data.address === address) {
+        callback(data);
+      }
+    });
   }
 
   // Protocol Integration Methods

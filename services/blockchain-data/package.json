@@ -1,0 +1,25 @@
+{
+  "name": "@cryptovault/blockchain-data",
+  "version": "1.0.0",
+  "description": "Real blockchain data integration service",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "test": "vitest",
+    "lint": "eslint src --ext .ts",
+    "lint:fix": "eslint src --ext .ts --fix"
+  },
+  "dependencies": {
+    "ethers": "^6.0.0",
+    "ws": "^8.18.3",
+    "dotenv": "^17.2.1"
+  },
+  "devDependencies": {
+    "@types/node": "^20.19.10",
+    "@types/ws": "^8.18.1",
+    "typescript": "^5.0.0",
+    "vitest": "^0.34.6"
+  }
+}

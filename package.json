@@ -23,7 +23,9 @@
     "format": "prettier --write .",
     "typecheck": "tsc --noEmit",
     "clean": "rimraf dist build coverage .nyc_output",
-    "prepare": "husky install"
+    "prepare": "husky install",
+    "setup-real-data": "ts-node scripts/setup-real-data-env.ts",
+    "validate-real-data-config": "ts-node scripts/validate-real-data-config.ts"
   },
   "workspaces": [
     "contracts",
@@ -55,7 +57,7 @@
   "dependencies": {
     "@openzeppelin/contracts": "^5.4.0",
     "@types/ws": "^8.18.1",
-    "ethers": "^6.0.0",
+    "ethers": "^6.15.0",
     "viem": "^1.0.0",
     "wagmi": "^1.0.0",
     "ws": "^8.18.3"

@@ -283,3 +283,13 @@ export * from './price-feed-service';
 export * from './wallet-linking-service';
 export * from './data-validation-service';
 export * from './enhanced-aggregation-service';
+export * from './real-market-data-service';
+export * from './defi-market-data-service';
+export * from './comprehensive-market-data-service';
+
+// Real-time price feed management (Task 6.1 & 6.2)
+export * from './real-time-price-feed-manager';
+export * from './redis-price-cache';
+export * from './price-feed-failover';
+export * from './price-volatility-monitor';
+export * from './integrated-price-feed-service';

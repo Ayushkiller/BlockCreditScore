@@ -78,6 +78,20 @@ interface ZKProof {
   expiresAt: number;
 }
 
+interface BlockchainConnectionState {
+  isConnected: boolean;
+  currentProvider: string | null;
+  lastBlockNumber: number;
+  connectionTime: number;
+  reconnectAttempts: number;
+  providerHealth: Array<{
+    name: string;
+    isHealthy: boolean;
+    priority: number;
+    latency?: number;
+  }>;
+}
+
 interface CreditIntelligenceContextType {
   // State
   profile: CreditProfile | null;
@@ -91,6 +105,9 @@ interface CreditIntelligenceContextType {
   privacyMode: boolean;
   connectedAddress: string | null;
   
+  // Blockchain connection state
+  blockchainConnection: BlockchainConnectionState;
+  
   // Actions
   connectWallet: (address: string) => Promise<void>;
   disconnectWallet: () => void;
@@ -102,6 +119,7 @@ interface CreditIntelligenceContextType {
   generateProof: (type: 'threshold' | 'selective' | 'full', options: any) => Promise<ZKProof | null>;
   claimAchievement: (achievementId: string) => Promise<boolean>;
   exportData: (options: any) => Promise<Blob | null>;
+  refreshBlockchainConnection: () => Promise<void>;
 }
 
 const CreditIntelligenceContext = createContext<CreditIntelligenceContextType | undefined>(undefined);
@@ -119,9 +137,72 @@ export const CreditIntelligenceProvider: React.FC<CreditIntelligenceProviderProp
   const [error, setError] = useState<string | null>(null);
   const [privacyMode, setPrivacyModeState] = useState(false);
   const [connectedAddress, setConnectedAddress] = useState<string | null>(null);
+  const [blockchainConnection, setBlockchainConnection] = useState<BlockchainConnectionState>({
+    isConnected: false,
+    currentProvider: null,
+    lastBlockNumber: 0,
+    connectionTime: 0,
+    reconnectAttempts: 0,
+    providerHealth: []
+  });
 
   // Mock data for demonstration - in real implementation, this would come from the service
 
+
+  // Load blockchain connection status and set up real-time monitoring
+  useEffect(() => {
+    let unsubscribeStatus: (() => void) | undefined;
+
+    const setupBlockchainMonitoring = async () => {
+      try {
+        // Import the service dynamically
+        const { creditIntelligenceService } = await import('../services/creditIntelligenceService');
+
+        // Get initial blockchain status
+        const status = await creditIntelligenceService.getBlockchainStatus();
+        if (status) {
+          setBlockchainConnection({
+            isConnected: status.isConnected,
+            currentProvider: status.currentProvider?.name || null,
+            lastBlockNumber: status.lastBlockNumber,
+            connectionTime: status.connectionTime,
+            reconnectAttempts: status.reconnectAttempts,
+            providerHealth: status.providerHealth || []
+          });
+        }
+
+        // Subscribe to real-time blockchain status updates
+        unsubscribeStatus = await creditIntelligenceService.subscribeToConnectionStatus((statusUpdate) => {
+          setBlockchainConnection({
+            isConnected: statusUpdate.isConnected,
+            currentProvider: statusUpdate.currentProvider?.name || null,
+            lastBlockNumber: statusUpdate.lastBlockNumber,
+            connectionTime: statusUpdate.connectionTime,
+            reconnectAttempts: statusUpdate.reconnectAttempts,
+            providerHealth: statusUpdate.providerHealth || []
+          });
+        });
+
+      } catch (error) {
+        console.error('Failed to set up blockchain monitoring:', error);
+        // Set default disconnected state
+        setBlockchainConnection({
+          isConnected: false,
+          currentProvider: null,
+          lastBlockNumber: 0,
+          connectionTime: 0,
+          reconnectAttempts: 0,
+          providerHealth: []
+        });
+      }
+    };
+
+    setupBlockchainMonitoring();
+
+    return () => {
+      if (unsubscribeStatus) unsubscribeStatus();
+    };
+  }, []);
 
   // Load data from API when address is connected
   useEffect(() => {
@@ -138,20 +219,22 @@ export const CreditIntelligenceProvider: React.FC<CreditIntelligenceProviderProp
   const loadProfileData = async (address: string) => {
     setLoading(true);
     try {
-      // Load profile from API
-      const profileResponse = await fetch(`http://localhost:3001/api/credit-profile/${address}`);
-      if (profileResponse.ok) {
-        const profileData = await profileResponse.json();
+      // Import the service dynamically
+      const { creditIntelligenceService } = await import('../services/creditIntelligenceService');
+
+      // Load profile with real transaction data
+      const profileData = await creditIntelligenceService.getCreditProfile(address);
+      if (profileData) {
         setProfile(profileData);
         setAchievements(profileData.achievements || []);
       }
 
-      // Load analytics from API
-      const analyticsResponse = await fetch(`http://localhost:3001/api/analytics/${address}?timeframe=30d`);
-      if (analyticsResponse.ok) {
-        const analyticsData = await analyticsResponse.json();
+      // Load analytics with real blockchain metrics
+      const analyticsData = await creditIntelligenceService.getAnalytics(address, '30d');
+      if (analyticsData) {
         setAnalytics(analyticsData);
       }
+
     } catch (error) {
       console.error('Error loading profile data:', error);
       setError('Failed to load profile data');
@@ -191,9 +274,12 @@ export const CreditIntelligenceProvider: React.FC<CreditIntelligenceProviderProp
     
     setLoading(true);
     try {
-      const response = await fetch(`http://localhost:3001/api/credit-profile/${connectedAddress}`);
-      if (response.ok) {
-        const profileData = await response.json();
+      // Import the service dynamically
+      const { creditIntelligenceService } = await import('../services/creditIntelligenceService');
+
+      // Refresh profile with real transaction data
+      const profileData = await creditIntelligenceService.getCreditProfile(connectedAddress);
+      if (profileData) {
         setProfile(profileData);
         setAchievements(profileData.achievements || []);
       } else {
@@ -212,9 +298,12 @@ export const CreditIntelligenceProvider: React.FC<CreditIntelligenceProviderProp
     
     setLoading(true);
     try {
-      const response = await fetch(`http://localhost:3001/api/analytics/${connectedAddress}?timeframe=${timeframe}`);
-      if (response.ok) {
-        const analyticsData = await response.json();
+      // Import the service dynamically
+      const { creditIntelligenceService } = await import('../services/creditIntelligenceService');
+
+      // Refresh analytics with real blockchain metrics
+      const analyticsData = await creditIntelligenceService.getAnalytics(connectedAddress, timeframe);
+      if (analyticsData) {
         setAnalytics(analyticsData);
       } else {
         setError('Failed to refresh analytics');
@@ -342,6 +431,31 @@ export const CreditIntelligenceProvider: React.FC<CreditIntelligenceProviderProp
     }
   };
 
+  const refreshBlockchainConnection = async () => {
+    try {
+      // Import the service dynamically
+      const { creditIntelligenceService } = await import('../services/creditIntelligenceService');
+
+      // Refresh blockchain connection status with real data
+      const status = await creditIntelligenceService.getBlockchainStatus();
+      if (status) {
+        setBlockchainConnection({
+          isConnected: status.isConnected,
+          currentProvider: status.currentProvider?.name || null,
+          lastBlockNumber: status.lastBlockNumber,
+          connectionTime: status.connectionTime,
+          reconnectAttempts: status.reconnectAttempts,
+          providerHealth: status.providerHealth || []
+        });
+      } else {
+        setError('Failed to refresh blockchain connection status');
+      }
+    } catch (err) {
+      setError('Failed to refresh blockchain connection status');
+      console.error('Blockchain connection refresh error:', err);
+    }
+  };
+
   const value: CreditIntelligenceContextType = {
     // State
     profile,
@@ -355,6 +469,9 @@ export const CreditIntelligenceProvider: React.FC<CreditIntelligenceProviderProp
     privacyMode,
     connectedAddress,
     
+    // Blockchain connection state
+    blockchainConnection,
+    
     // Actions
     connectWallet,
     disconnectWallet,
@@ -365,7 +482,8 @@ export const CreditIntelligenceProvider: React.FC<CreditIntelligenceProviderProp
     setPrivacyMode,
     generateProof,
     claimAchievement,
-    exportData
+    exportData,
+    refreshBlockchainConnection
   };
 
   return (

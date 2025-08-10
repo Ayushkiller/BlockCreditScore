@@ -1,8 +1,10 @@
-// Chainlink Price Feed Service for USD Normalization
-// Integrates with Chainlink price feeds to convert token values to USD
+// Enhanced Price Feed Service for USD Normalization
+// Integrates with real market data APIs (CoinGecko) and Chainlink price feeds
+// Implements task 4.1: Replace mock price data with live API feeds
 
 import { formatError } from '../../utils/errors';
 import { getCurrentTimestamp } from '../../utils/time';
+import { getRealMarketDataService, RealPriceData } from './real-market-data-service';
 
 export interface PriceFeedConfig {
   chainlinkRpcUrl: string;
@@ -33,6 +35,7 @@ export class PriceFeedService {
   private priceCache: Map<string, TokenPrice> = new Map();
   private updateInterval: NodeJS.Timeout | null = null;
   private isRunning: boolean = false;
+  private realMarketDataService: any = null;
 
   // Chainlink price feed addresses on Ethereum mainnet
   private readonly CHAINLINK_FEEDS: ChainlinkFeed[] = [
@@ -125,6 +128,14 @@ export class PriceFeedService {
         throw new Error('Price feed service is already running');
       }
 
+      // Initialize real market data service
+      try {
+        this.realMarketDataService = await getRealMarketDataService();
+        console.log('Real market data service integrated successfully');
+      } catch (error) {
+        console.warn('Real market data service not available, falling back to Chainlink only:', formatError(error));
+      }
+
       // Initial price fetch
       await this.updateAllPrices();
 
@@ -138,7 +149,7 @@ export class PriceFeedService {
       }, this.config.updateInterval);
 
       this.isRunning = true;
-      console.log('Price feed service started successfully');
+      console.log('Enhanced price feed service started successfully');
     } catch (error) {
       console.error('Failed to start price feed service:', formatError(error));
       throw error;
@@ -154,8 +165,17 @@ export class PriceFeedService {
       this.updateInterval = null;
     }
 
+    // Stop real market data service if available
+    if (this.realMarketDataService) {
+      try {
+        await this.realMarketDataService.stop();
+      } catch (error) {
+        console.error('Error stopping real market data service:', formatError(error));
+      }
+    }
+
     this.isRunning = false;
-    console.log('Price feed service stopped');
+    console.log('Enhanced price feed service stopped');
   }
 
   /**
@@ -170,7 +190,29 @@ export class PriceFeedService {
       return cachedPrice.priceUSD;
     }
 
-    // Fetch fresh price
+    // Try real market data service first (CoinGecko with Chainlink fallback)
+    if (this.realMarketDataService) {
+      try {
+        const realPrice = await this.realMarketDataService.getPriceWithChainlinkFallback(symbol);
+        
+        // Convert to TokenPrice format and cache
+        const tokenPrice: TokenPrice = {
+          symbol: realPrice.symbol,
+          address: realPrice.address,
+          priceUSD: realPrice.priceUSD,
+          decimals: realPrice.decimals,
+          lastUpdated: realPrice.lastUpdated,
+          confidence: realPrice.confidence
+        };
+        
+        this.priceCache.set(symbol, tokenPrice);
+        return realPrice.priceUSD;
+      } catch (error) {
+        console.warn(`Real market data service failed for ${symbol}, falling back to legacy Chainlink:`, formatError(error));
+      }
+    }
+
+    // Fallback to legacy Chainlink implementation
     try {
       const price = await this.fetchPriceFromChainlink(symbol);
       return price.priceUSD;
@@ -240,6 +282,65 @@ export class PriceFeedService {
   }
 
   /**
+   * Get historical price data for a token
+   */
+  public async getHistoricalPrices(
+    tokenIdentifier: string,
+    days: number = 30
+  ): Promise<Array<{ timestamp: number; price: number; volume?: number }>> {
+    const symbol = this.resolveTokenSymbol(tokenIdentifier);
+    
+    if (this.realMarketDataService) {
+      try {
+        return await this.realMarketDataService.getHistoricalPrices(symbol, days);
+      } catch (error) {
+        console.error(`Failed to fetch historical prices for ${symbol}:`, formatError(error));
+        throw error;
+      }
+    } else {
+      throw new Error('Historical price data requires real market data service');
+    }
+  }
+
+  /**
+   * Subscribe to real-time price updates
+   */
+  public subscribeToRealTimePriceUpdates(
+    tokenIdentifier: string,
+    callback: (price: { symbol: string; priceUSD: number; change24h?: number }) => void,
+    intervalMs: number = 60000
+  ): void {
+    const symbol = this.resolveTokenSymbol(tokenIdentifier);
+    
+    if (this.realMarketDataService) {
+      this.realMarketDataService.subscribeToRealTimePriceUpdates(
+        symbol,
+        (realPrice: RealPriceData) => {
+          callback({
+            symbol: realPrice.symbol,
+            priceUSD: realPrice.priceUSD,
+            change24h: realPrice.change24h
+          });
+        },
+        intervalMs
+      );
+    } else {
+      console.warn('Real-time price subscriptions require real market data service');
+    }
+  }
+
+  /**
+   * Unsubscribe from real-time price updates
+   */
+  public unsubscribeFromPriceUpdates(tokenIdentifier: string): void {
+    const symbol = this.resolveTokenSymbol(tokenIdentifier);
+    
+    if (this.realMarketDataService) {
+      this.realMarketDataService.unsubscribeFromPriceUpdates(symbol);
+    }
+  }
+
+  /**
    * Get all cached token prices
    */
   public getAllCachedPrices(): TokenPrice[] {
@@ -254,18 +355,32 @@ export class PriceFeedService {
     cachedPrices: number;
     lastUpdate: number;
     supportedTokens: string[];
+    realDataEnabled: boolean;
+    realDataStatus?: any;
   } {
     const prices = Array.from(this.priceCache.values());
     const lastUpdate = prices.length > 0 
       ? Math.max(...prices.map(p => p.lastUpdated))
       : 0;
 
-    return {
+    const status = {
       isRunning: this.isRunning,
       cachedPrices: this.priceCache.size,
       lastUpdate,
-      supportedTokens: this.CHAINLINK_FEEDS.map(feed => feed.symbol)
+      supportedTokens: this.CHAINLINK_FEEDS.map(feed => feed.symbol),
+      realDataEnabled: !!this.realMarketDataService
     };
+
+    // Add real market data service status if available
+    if (this.realMarketDataService) {
+      try {
+        (status as any).realDataStatus = this.realMarketDataService.getServiceStatus();
+      } catch (error) {
+        console.error('Error getting real market data status:', formatError(error));
+      }
+    }
+
+    return status;
   }
 
   /**

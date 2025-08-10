@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   CheckCircle, 
   AlertCircle, 
@@ -7,12 +7,71 @@ import {
   DollarSign, 
   Activity,
   Network,
-  Shield
+  Shield,
+  Wifi,
+  WifiOff,
+  Server
 } from 'lucide-react';
 import { useDeployment } from '../contexts/DeploymentContext';
 
+interface BlockchainConnectionStatus {
+  isConnected: boolean;
+  currentProvider: string | null;
+  lastBlockNumber: number;
+  connectionTime: number;
+  reconnectAttempts: number;
+  providerHealth: Array<{
+    name: string;
+    isHealthy: boolean;
+    priority: number;
+    latency?: number;
+    rateLimit: number;
+    failureCount: number;
+  }>;
+  statistics: {
+    totalProviders: number;
+    healthyProviders: number;
+    averageLatency: number;
+    totalFailures: number;
+  };
+}
+
 const StatusOverview: React.FC = () => {
   const { envConfig, deployments, monitoringData } = useDeployment();
+  const [blockchainStatus, setBlockchainStatus] = useState<BlockchainConnectionStatus>({
+    isConnected: false,
+    currentProvider: null,
+    lastBlockNumber: 0,
+    connectionTime: 0,
+    reconnectAttempts: 0,
+    providerHealth: [],
+    statistics: {
+      totalProviders: 0,
+      healthyProviders: 0,
+      averageLatency: 0,
+      totalFailures: 0
+    }
+  });
+
+  // Fetch blockchain connection status
+  useEffect(() => {
+    const fetchBlockchainStatus = async () => {
+      try {
+        const response = await fetch('http://localhost:3001/api/blockchain/status');
+        if (response.ok) {
+          const status = await response.json();
+          setBlockchainStatus(status);
+        }
+      } catch (error) {
+        console.error('Failed to fetch blockchain status:', error);
+      }
+    };
+
+    fetchBlockchainStatus();
+    const interval = setInterval(fetchBlockchainStatus, 5000); // Update every 5 seconds
+
+    return () => clearInterval(interval);
+  }, []);
 
   const isConfigured = envConfig.GOERLI_RPC_URL && envConfig.PRIVATE_KEY && envConfig.ETHERSCAN_API_KEY;
   const hasDeployments = deployments.length > 0;
@@ -44,6 +103,22 @@ const StatusOverview: React.FC = () => {
         `Private Key: ${envConfig.PRIVATE_KEY ? '✓ Configured' : '✗ Missing'}`,
         `Etherscan API: ${envConfig.ETHERSCAN_API_KEY ? '✓ Configured' : '✗ Missing'}`,
         `Gas Settings: ${envConfig.GAS_PRICE_GWEI} gwei, ${envConfig.GAS_LIMIT} limit`
+      ]
+    },
+    {
+      title: 'Blockchain Connection',
+      status: blockchainStatus.isConnected ? 'Connected' : 'Disconnected',
+      icon: blockchainStatus.isConnected ? Wifi : WifiOff,
+      color: blockchainStatus.isConnected ? 'success' : 'error',
+      details: [
+        `Provider: ${blockchainStatus.currentProvider || 'None'}`,
+        `Current Block: #${blockchainStatus.lastBlockNumber?.toLocaleString() || '0'}`,
+        `Healthy Providers: ${blockchainStatus.statistics?.healthyProviders || 0}/${blockchainStatus.statistics?.totalProviders || 0}`,
+        `Reconnect Attempts: ${blockchainStatus.reconnectAttempts || 0}`,
+        `Avg Latency: ${blockchainStatus.statistics?.averageLatency || 0}ms`,
+        `Total Failures: ${blockchainStatus.statistics?.totalFailures || 0}`,
+        `Connection Time: ${blockchainStatus.connectionTime ? new Date(blockchainStatus.connectionTime).toLocaleTimeString() : 'N/A'}`,
+        `Real Data: ${process.env.REAL_DATA_ENABLED === 'true' ? 'Enabled' : 'Mock Mode'}`
       ]
     },
     {
@@ -181,6 +256,52 @@ const StatusOverview: React.FC = () => {
           ))}
         </div>
       </div>
+
+      {/* Blockchain Provider Health */}
+      {blockchainStatus.providerHealth.length > 0 && (
+        <div className="card">
+          <h3 className="text-xl font-semibold text-gray-900 mb-6">Blockchain Provider Health</h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {blockchainStatus.providerHealth.map((provider, index) => (
+              <div key={index} className={`p-4 rounded-lg border ${
+                provider.isHealthy ? 'border-green-200 bg-green-50' : 'border-red-200 bg-red-50'
+              }`}>
+                <div className="flex items-center justify-between mb-2">
+                  <div className="flex items-center space-x-2">
+                    <div className={`w-3 h-3 rounded-full ${
+                      provider.isHealthy ? 'bg-green-500' : 'bg-red-500'
+                    }`}></div>
+                    <span className="font-medium text-gray-900">{provider.name}</span>
+                  </div>
+                  <Server className={`w-4 h-4 ${
+                    provider.isHealthy ? 'text-green-600' : 'text-red-600'
+                  }`} />
+                </div>
+                <div className="space-y-1 text-sm">
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Priority:</span>
+                    <span className="font-medium">{provider.priority}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Latency:</span>
+                    <span className="font-medium">{provider.latency || 'N/A'}ms</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Rate Limit:</span>
+                    <span className="font-medium">{provider.rateLimit}/s</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Failures:</span>
+                    <span className={`font-medium ${
+                      provider.failureCount > 0 ? 'text-red-600' : 'text-green-600'
+                    }`}>{provider.failureCount}</span>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Recent Activity */}
       {deployments.length > 0 && (

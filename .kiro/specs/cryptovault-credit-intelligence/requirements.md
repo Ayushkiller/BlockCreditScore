@@ -21,27 +21,31 @@ The system operates as a **Decentralized Autonomous Credit Organization (DACO)**
 3. WHEN displaying scores THEN the system SHALL present each dimension with clear explanations and improvement recommendations
 4. IF a user has insufficient data for a dimension THEN the system SHALL mark it as "Insufficient Data" rather than assigning a default score
 
-### Requirement 2: Ethereum Behavior Aggregation
+### Requirement 2: Real Ethereum Data Integration
 
-**User Story:** As an Ethereum DeFi participant, I want my credit assessment to include my comprehensive behavior on Ethereum mainnet, so that my full DeFi profile is accurately represented.
-
-#### Acceptance Criteria
-
-1. WHEN analyzing user behavior THEN the system SHALL aggregate data from Ethereum mainnet only
-2. WHEN processing transaction data THEN the system SHALL normalize transaction values to USD equivalents using Chainlink price feeds
-3. WHEN a user connects multiple wallets THEN the system SHALL allow linking Ethereum wallets to create a unified credit profile
-4. IF wallet data conflicts exist THEN the system SHALL apply conflict resolution algorithms prioritizing more recent and higher-volume activities
-
-### Requirement 3: Predictive Risk Analytics
-
-**User Story:** As a lender in the DeFi space, I want to understand not just current creditworthiness but predicted future risk, so that I can make more informed lending decisions.
+**User Story:** As an Ethereum DeFi participant, I want my credit assessment to use real on-chain data from actual Ethereum transactions, so that my credit score reflects genuine financial behavior rather than simulated data.
 
 #### Acceptance Criteria
 
-1. WHEN sufficient historical data exists THEN the system SHALL generate 30-day, 90-day, and 180-day risk predictions
-2. WHEN calculating predictions THEN the system SHALL use machine learning models trained on historical default patterns and market conditions
-3. WHEN market volatility increases THEN the system SHALL adjust risk predictions to account for increased uncertainty
-4. IF prediction confidence is below 70% THEN the system SHALL display confidence intervals and uncertainty warnings
+1. WHEN analyzing user behavior THEN the system SHALL connect to live Ethereum mainnet using real RPC endpoints (Alchemy, Infura, or Ankr)
+2. WHEN processing transaction data THEN the system SHALL fetch actual transaction details using eth_getTransactionByHash and eth_getTransactionReceipt
+3. WHEN normalizing values THEN the system SHALL use live Chainlink price feed contracts (ETH/USD: 0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419) for real-time USD conversion
+4. WHEN monitoring wallets THEN the system SHALL use WebSocket connections to detect new transactions within 15 minutes of blockchain confirmation
+5. WHEN identifying DeFi protocols THEN the system SHALL use actual contract addresses: Uniswap V3 Router (0xE592427A0AEce92De3Edee1F18E0157C05861564), Aave V3 Pool (0x87870Bca3F3fD6335C3F4ce8392D69350B4fA4E2), Compound Comptroller (0x3d9819210A31b4961b30EF54bE2aeD79B9c9Cd3B)
+6. IF RPC endpoints fail THEN the system SHALL automatically failover to backup providers with exponential backoff retry logic
+
+### Requirement 3: Real Market Data Predictive Analytics
+
+**User Story:** As a lender in the DeFi space, I want risk predictions based on real market data and actual DeFi protocol performance, so that I can make informed lending decisions using current market conditions.
+
+#### Acceptance Criteria
+
+1. WHEN calculating risk predictions THEN the system SHALL use real market data from CoinGecko API or CoinMarketCap API for volatility indices
+2. WHEN training ML models THEN the system SHALL use actual historical default data from Aave, Compound, and MakerDAO liquidation events
+3. WHEN assessing market conditions THEN the system SHALL fetch real-time TVL data from DeFiPulse API or DefiLlama API
+4. WHEN calculating volatility adjustments THEN the system SHALL use actual ETH price volatility from the last 30 days via price feed APIs
+5. WHEN generating confidence intervals THEN the system SHALL use real statistical models based on actual prediction accuracy from backtesting
+6. IF external APIs are unavailable THEN the system SHALL use cached data with clear staleness indicators and reduced confidence scores
 
 ### Requirement 4: Privacy-Preserving Verification
 
@@ -65,16 +69,18 @@ The system operates as a **Decentralized Autonomous Credit Organization (DACO)**
 3. WHEN displaying the NFT THEN it SHALL show current scores, historical trends, and achievement badges for exceptional behavior
 4. IF the user's score improves significantly THEN the NFT SHALL unlock new visual tiers and special attributes
 
-### Requirement 6: Real-Time Behavior Monitoring
+### Requirement 6: Real-Time Blockchain Monitoring
 
-**User Story:** As a user building my credit reputation, I want my score to update when I perform positive financial behaviors, so that I can see benefits from responsible actions.
+**User Story:** As a user building my credit reputation, I want my score to update based on real blockchain transactions I perform, so that I can see immediate benefits from responsible financial actions.
 
 #### Acceptance Criteria
 
-1. WHEN monitoring user wallets THEN the system SHALL detect new Ethereum transactions within 15 minutes of blockchain confirmation
-2. WHEN positive behaviors are detected THEN the system SHALL update relevant credit dimensions within 4 hours
-3. WHEN significant negative behaviors occur THEN the system SHALL flag the account and adjust scores within 24 hours
-4. IF the monitoring system detects anomalous behavior THEN it SHALL log the event for manual review
+1. WHEN monitoring user wallets THEN the system SHALL subscribe to real Ethereum WebSocket feeds (wss://eth-mainnet.alchemyapi.io/v2/API_KEY) for live transaction detection
+2. WHEN new transactions are detected THEN the system SHALL fetch complete transaction details including gas usage, method calls, and event logs from actual blockchain data
+3. WHEN analyzing DeFi interactions THEN the system SHALL decode real smart contract calls using actual ABI data for Uniswap, Aave, Compound, and MakerDAO
+4. WHEN calculating behavior scores THEN the system SHALL use actual transaction amounts, frequency patterns, and protocol interaction history from blockchain data
+5. WHEN detecting liquidations THEN the system SHALL monitor real liquidation events from lending protocols using event log filtering
+6. IF blockchain connection is lost THEN the system SHALL automatically reconnect and backfill missed transactions using block range queries
 
 ### Requirement 7: Social Credit Layer Integration
 
@@ -87,16 +93,18 @@ The system operates as a **Decentralized Autonomous Credit Organization (DACO)**
 3. WHEN disputes arise THEN the system SHALL provide a decentralized arbitration mechanism for resolution
 4. IF social credit data is insufficient THEN the system SHALL not penalize users but mark this dimension as developing
 
-### Requirement 8: Advanced Analytics Dashboard
+### Requirement 8: Real Data Analytics Dashboard
 
-**User Story:** As a user wanting to improve my credit standing, I want detailed analytics about my financial behavior patterns, so that I can understand how to optimize my credit score.
+**User Story:** As a user wanting to improve my credit standing, I want analytics based on my actual transaction history and real market comparisons, so that I can understand how to optimize my credit score using concrete data.
 
 #### Acceptance Criteria
 
-1. WHEN users access their dashboard THEN the system SHALL display comprehensive analytics including behavior trends, score evolution, and peer comparisons
-2. WHEN showing recommendations THEN the system SHALL provide specific, actionable advice for improving each credit dimension
-3. WHEN displaying historical data THEN the system SHALL offer multiple time ranges and visualization options
-4. IF users want to export data THEN the system SHALL provide secure data export functionality with privacy controls
+1. WHEN displaying transaction history THEN the system SHALL show actual Ethereum transactions with real timestamps, amounts, and protocol interactions
+2. WHEN calculating peer comparisons THEN the system SHALL use real anonymized data from other users' actual DeFi behavior patterns
+3. WHEN showing market trends THEN the system SHALL display real DeFi protocol performance data including actual TVL changes, yield rates, and usage statistics
+4. WHEN providing recommendations THEN the system SHALL base suggestions on actual successful patterns from real user data and current market conditions
+5. WHEN exporting data THEN the system SHALL include real transaction hashes, block numbers, and verifiable on-chain references
+6. IF real-time data is unavailable THEN the system SHALL clearly indicate data staleness and provide last-updated timestamps
 
 ### Requirement 9: DeFi Protocol Integration
 
