@@ -1,6 +1,9 @@
 const { ethers } = require('ethers');
 const WebSocket = require('ws');
 
+// Load environment variables from root directory
+require('dotenv').config({ path: '../../.env' });
+
 /**
  * Real Blockchain Integration Service for API Gateway
  * Provides live blockchain data integration with automatic failover

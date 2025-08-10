@@ -10,7 +10,11 @@ import {
   Shield,
   Wifi,
   WifiOff,
-  Server
+  Server,
+  Database,
+  TrendingUp,
+  AlertTriangle,
+  RefreshCw
 } from 'lucide-react';
 import { useDeployment } from '../contexts/DeploymentContext';
 
@@ -36,6 +40,57 @@ interface BlockchainConnectionStatus {
   };
 }
 
+interface PriceCacheStatus {
+  isConnected: boolean;
+  totalKeys: number;
+  hitRate: number;
+  missRate: number;
+  totalHits: number;
+  totalMisses: number;
+  averageLatency: number;
+  memoryUsage: number;
+  stalePrices: number;
+  lastUpdate: number;
+  healthStatus: 'healthy' | 'degraded' | 'unhealthy';
+}
+
+interface PriceFailoverStatus {
+  isInitialized: boolean;
+  totalSources: number;
+  healthySources: number;
+  enabledSources: number;
+  circuitBreakersOpen: number;
+  sources: Array<{
+    name: string;
+    priority: number;
+    isHealthy: boolean;
+    isEnabled: boolean;
+    successCount: number;
+    failureCount: number;
+    averageLatency: number;
+    lastError?: string;
+    circuitBreakerOpen: boolean;
+  }>;
+}
+
+interface VolatilityMonitorStatus {
+  isMonitoring: boolean;
+  monitoredTokens: number;
+  totalDataPoints: number;
+  averageHistorySize: number;
+  oldestDataPoint: number;
+  newestDataPoint: number;
+  updateInterval: number;
+  recentAlerts: Array<{
+    symbol: string;
+    alertType: string;
+    severity: string;
+    currentValue: number;
+    threshold: number;
+    timestamp: number;
+  }>;
+}
+
 const StatusOverview: React.FC = () => {
   const { envConfig, deployments, monitoringData } = useDeployment();
   const [blockchainStatus, setBlockchainStatus] = useState<BlockchainConnectionStatus>({
@@ -51,6 +106,40 @@ const StatusOverview: React.FC = () => {
       averageLatency: 0,
       totalFailures: 0
     }
+  });
+
+  const [priceCacheStatus, setPriceCacheStatus] = useState<PriceCacheStatus>({
+    isConnected: false,
+    totalKeys: 0,
+    hitRate: 0,
+    missRate: 0,
+    totalHits: 0,
+    totalMisses: 0,
+    averageLatency: 0,
+    memoryUsage: 0,
+    stalePrices: 0,
+    lastUpdate: 0,
+    healthStatus: 'unhealthy'
+  });
+
+  const [priceFailoverStatus, setPriceFailoverStatus] = useState<PriceFailoverStatus>({
+    isInitialized: false,
+    totalSources: 0,
+    healthySources: 0,
+    enabledSources: 0,
+    circuitBreakersOpen: 0,
+    sources: []
+  });
+
+  const [volatilityStatus, setVolatilityStatus] = useState<VolatilityMonitorStatus>({
+    isMonitoring: false,
+    monitoredTokens: 0,
+    totalDataPoints: 0,
+    averageHistorySize: 0,
+    oldestDataPoint: 0,
+    newestDataPoint: 0,
+    updateInterval: 0,
+    recentAlerts: []
   });
 
   // Fetch blockchain connection status
@@ -69,6 +158,66 @@ const StatusOverview: React.FC = () => {
 
     fetchBlockchainStatus();
     const interval = setInterval(fetchBlockchainStatus, 5000); // Update every 5 seconds
+
+    return () => clearInterval(interval);
+  }, []);
+
+  // Fetch price cache status
+  useEffect(() => {
+    const fetchPriceCacheStatus = async () => {
+      try {
+        const response = await fetch('http://localhost:3001/api/price-feeds/status');
+        if (response.ok) {
+          const status = await response.json();
+          setPriceCacheStatus(status.cache || {});
+        }
+      } catch (error) {
+        console.error('Failed to fetch price cache status:', error);
+      }
+    };
+
+    fetchPriceCacheStatus();
+    const interval = setInterval(fetchPriceCacheStatus, 10000); // Update every 10 seconds
+
+    return () => clearInterval(interval);
+  }, []);
+
+  // Fetch price failover status
+  useEffect(() => {
+    const fetchPriceFailoverStatus = async () => {
+      try {
+        const response = await fetch('http://localhost:3001/api/price-feeds/failover-status');
+        if (response.ok) {
+          const status = await response.json();
+          setPriceFailoverStatus(status);
+        }
+      } catch (error) {
+        console.error('Failed to fetch price failover status:', error);
+      }
+    };
+
+    fetchPriceFailoverStatus();
+    const interval = setInterval(fetchPriceFailoverStatus, 15000); // Update every 15 seconds
+
+    return () => clearInterval(interval);
+  }, []);
+
+  // Fetch volatility monitor status
+  useEffect(() => {
+    const fetchVolatilityStatus = async () => {
+      try {
+        const response = await fetch('http://localhost:3001/api/price-feeds/volatility-status');
+        if (response.ok) {
+          const status = await response.json();
+          setVolatilityStatus(status);
+        }
+      } catch (error) {
+        console.error('Failed to fetch volatility status:', error);
+      }
+    };
+
+    fetchVolatilityStatus();
+    const interval = setInterval(fetchVolatilityStatus, 30000); // Update every 30 seconds
 
     return () => clearInterval(interval);
   }, []);
@@ -106,6 +255,26 @@ const StatusOverview: React.FC = () => {
       ]
     },
     {
+      title: 'Price Cache System',
+      status: priceCacheStatus.isConnected ? 
+        (priceCacheStatus.healthStatus === 'healthy' ? 'Healthy' : 
+         priceCacheStatus.healthStatus === 'degraded' ? 'Degraded' : 'Unhealthy') : 'Disconnected',
+      icon: priceCacheStatus.isConnected ? 
+        (priceCacheStatus.healthStatus === 'healthy' ? Database : 
+         priceCacheStatus.healthStatus === 'degraded' ? AlertTriangle : AlertCircle) : WifiOff,
+      color: priceCacheStatus.isConnected ? 
+        (priceCacheStatus.healthStatus === 'healthy' ? 'success' : 
+         priceCacheStatus.healthStatus === 'degraded' ? 'warning' : 'error') : 'error',
+      details: [
+        `Cached Prices: ${priceCacheStatus.totalKeys} keys`,
+        `Hit Rate: ${priceCacheStatus.hitRate.toFixed(1)}%`,
+        `Avg Latency: ${priceCacheStatus.averageLatency.toFixed(1)}ms`,
+        `Stale Prices: ${priceCacheStatus.stalePrices}`,
+        `Memory Usage: ${(priceCacheStatus.memoryUsage / 1024 / 1024).toFixed(1)}MB`,
+        `Last Update: ${priceCacheStatus.lastUpdate ? new Date(priceCacheStatus.lastUpdate).toLocaleTimeString() : 'Never'}`
+      ]
+    },
+    {
       title: 'Blockchain Connection',
       status: blockchainStatus.isConnected ? 'Connected' : 'Disconnected',
       icon: blockchainStatus.isConnected ? Wifi : WifiOff,
@@ -131,6 +300,49 @@ const StatusOverview: React.FC = () => {
         `Sepolia: ${stats.sepolia} deployments`,
         `Total Gas Used: ${stats.totalGasUsed.toLocaleString()}`,
         `Last Deployment: ${stats.lastDeployment ? new Date(stats.lastDeployment).toLocaleDateString() : 'Never'}`
+      ]
+    },
+    {
+      title: 'Price Feed Failover',
+      status: priceFailoverStatus.isInitialized ? 
+        `${priceFailoverStatus.healthySources}/${priceFailoverStatus.totalSources} Sources Healthy` : 'Not Initialized',
+      icon: priceFailoverStatus.isInitialized ? 
+        (priceFailoverStatus.circuitBreakersOpen > 0 ? AlertTriangle : Network) : AlertCircle,
+      color: priceFailoverStatus.isInitialized ? 
+        (priceFailoverStatus.healthySources === priceFailoverStatus.totalSources ? 'success' :
+         priceFailoverStatus.healthySources > 0 ? 'warning' : 'error') : 'error',
+      details: [
+        `Total Sources: ${priceFailoverStatus.totalSources}`,
+        `Healthy Sources: ${priceFailoverStatus.healthySources}`,
+        `Enabled Sources: ${priceFailoverStatus.enabledSources}`,
+        `Circuit Breakers Open: ${priceFailoverStatus.circuitBreakersOpen}`,
+        `Primary Source: ${
+          Array.isArray(priceFailoverStatus.sources)
+            ? priceFailoverStatus.sources.find(s => s.priority === 1)?.name || 'None'
+            : 'None'
+        }`,
+        `Failover Ready: ${priceFailoverStatus.healthySources > 1 ? '✓' : '✗'}`
+      ]
+    },
+    {
+      title: 'Volatility Monitoring',
+      status: volatilityStatus.isMonitoring ? 
+        `Monitoring ${volatilityStatus.monitoredTokens} Tokens` : 'Offline',
+      icon: volatilityStatus.isMonitoring ? TrendingUp : Activity,
+      color: volatilityStatus.isMonitoring ? 
+        (volatilityStatus.recentAlerts.length > 0 ? 'warning' : 'success') : 'info',
+      details: [
+        `Monitored Tokens: ${volatilityStatus.monitoredTokens}`,
+        `Total Data Points: ${
+          typeof volatilityStatus.totalDataPoints === 'number'
+            ? volatilityStatus.totalDataPoints.toLocaleString()
+            : '0'
+        }`,
+        `Avg History Size: ${volatilityStatus.averageHistorySize}`,
+        `Update Interval: ${volatilityStatus.updateInterval / 1000}s`,
+        `Recent Alerts: ${volatilityStatus.recentAlerts.length}`,
+        `Data Age: ${volatilityStatus.newestDataPoint ? 
+          Math.floor((Date.now() - volatilityStatus.newestDataPoint) / 1000) + 's' : 'N/A'}`
       ]
     },
     {
@@ -295,6 +507,124 @@ const StatusOverview: React.FC = () => {
                     <span className={`font-medium ${
                       provider.failureCount > 0 ? 'text-red-600' : 'text-green-600'
                     }`}>{provider.failureCount}</span>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Price Feed Sources Status */}
+      {priceFailoverStatus.sources.length > 0 && (
+        <div className="card">
+          <h3 className="text-xl font-semibold text-gray-900 mb-6">Price Feed Sources Status</h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {priceFailoverStatus.sources.map((source, index) => (
+              <div key={index} className={`p-4 rounded-lg border ${
+                source.isHealthy && source.isEnabled ? 'border-green-200 bg-green-50' : 
+                source.isEnabled ? 'border-yellow-200 bg-yellow-50' : 'border-red-200 bg-red-50'
+              }`}>
+                <div className="flex items-center justify-between mb-2">
+                  <div className="flex items-center space-x-2">
+                    <div className={`w-3 h-3 rounded-full ${
+                      source.isHealthy && source.isEnabled ? 'bg-green-500' : 
+                      source.isEnabled ? 'bg-yellow-500' : 'bg-red-500'
+                    }`}></div>
+                    <span className="font-medium text-gray-900 capitalize">{source.name}</span>
+                  </div>
+                  <div className="text-xs text-gray-500">
+                    Priority {source.priority}
+                  </div>
+                </div>
+                
+                <div className="space-y-1 text-sm">
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Status:</span>
+                    <span className={`font-medium ${
+                      source.isHealthy && source.isEnabled ? 'text-green-600' : 
+                      source.isEnabled ? 'text-yellow-600' : 'text-red-600'
+                    }`}>
+                      {source.isHealthy && source.isEnabled ? 'Healthy' : 
+                       source.isEnabled ? 'Degraded' : 'Disabled'}
+                    </span>
+                  </div>
+                  
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Success Rate:</span>
+                    <span className="font-medium">
+                      {source.successCount + source.failureCount > 0 ? 
+                        `${((source.successCount / (source.successCount + source.failureCount)) * 100).toFixed(1)}%` : 
+                        'N/A'}
+                    </span>
+                  </div>
+                  
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Avg Latency:</span>
+                    <span className="font-medium">{source.averageLatency.toFixed(0)}ms</span>
+                  </div>
+                  
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Circuit Breaker:</span>
+                    <span className={`font-medium ${
+                      source.circuitBreakerOpen ? 'text-red-600' : 'text-green-600'
+                    }`}>
+                      {source.circuitBreakerOpen ? 'Open' : 'Closed'}
+                    </span>
+                  </div>
+                  
+                  {source.lastError && (
+                    <div className="pt-2 border-t border-gray-200">
+                      <div className="text-xs text-red-600 truncate" title={source.lastError}>
+                        Last Error: {source.lastError}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Recent Volatility Alerts */}
+      {volatilityStatus.recentAlerts.length > 0 && (
+        <div className="card">
+          <h3 className="text-xl font-semibold text-gray-900 mb-6">Recent Volatility Alerts</h3>
+          <div className="space-y-3 max-h-64 overflow-y-auto">
+            {volatilityStatus.recentAlerts.slice(0, 10).map((alert, index) => (
+              <div key={index} className={`flex items-center justify-between p-3 rounded-lg border ${
+                alert.severity === 'critical' ? 'border-red-200 bg-red-50' :
+                alert.severity === 'high' ? 'border-orange-200 bg-orange-50' :
+                alert.severity === 'medium' ? 'border-yellow-200 bg-yellow-50' :
+                'border-blue-200 bg-blue-50'
+              }`}>
+                <div className="flex items-center space-x-3">
+                  <div className={`w-2 h-2 rounded-full ${
+                    alert.severity === 'critical' ? 'bg-red-500' :
+                    alert.severity === 'high' ? 'bg-orange-500' :
+                    alert.severity === 'medium' ? 'bg-yellow-500' :
+                    'bg-blue-500'
+                  }`}></div>
+                  <div>
+                    <div className="font-medium text-sm text-gray-900">
+                      {alert.symbol} - {alert.alertType.replace('_', ' ')}
+                    </div>
+                    <div className="text-xs text-gray-600 capitalize">
+                      {alert.severity} severity
+                    </div>
+                  </div>
+                </div>
+                
+                <div className="text-right">
+                  <div className="text-sm font-medium text-gray-900">
+                    {alert.currentValue.toFixed(2)}%
+                  </div>
+                  <div className="text-xs text-gray-600">
+                    Threshold: {alert.threshold}%
+                  </div>
+                  <div className="text-xs text-gray-500">
+                    {new Date(alert.timestamp).toLocaleTimeString()}
                   </div>
                 </div>
               </div>

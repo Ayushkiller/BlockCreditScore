@@ -52,27 +52,44 @@ const RealTimePriceDisplay: React.FC<RealTimePriceDisplayProps> = ({
         // Import the service dynamically
         const { creditIntelligenceService } = await import('../services/creditIntelligenceService');
 
-        // Get initial batch prices
-        const batchPrices = await creditIntelligenceService.getBatchRealTimePrices(symbols);
+        // Get initial Chainlink prices for all symbols
+        const priceMap = new Map();
         
-        if (batchPrices && batchPrices.prices) {
-          const priceMap = new Map();
-          for (const [symbol, priceData] of Object.entries(batchPrices.prices)) {
-            priceMap.set(symbol, priceData);
+        for (const symbol of symbols) {
+          try {
+            // Try Chainlink first, fallback to DEX if needed
+            let priceData;
+            try {
+              priceData = await creditIntelligenceService.getChainlinkPriceRealTime(symbol);
+              console.log(`🔗 Chainlink price for ${symbol}:`, priceData);
+            } catch (chainlinkError) {
+              console.warn(`Chainlink failed for ${symbol}, trying DEX:`, chainlinkError);
+              priceData = await creditIntelligenceService.getTokenPriceFromDEX(symbol);
+              console.log(`🔄 DEX price for ${symbol}:`, priceData);
+            }
+            
+            if (priceData && priceData.priceData) {
+              priceMap.set(symbol, priceData.priceData);
+            }
+          } catch (error) {
+            console.error(`Failed to get price for ${symbol}:`, error);
           }
+        }
+        
+        if (priceMap.size > 0) {
           setPrices(priceMap);
           setLastUpdate(Date.now());
         }
 
-        // Set up real-time subscriptions for each symbol
+        // Set up real-time Chainlink subscriptions for each symbol
         const newSubscriptions = new Map();
         
         for (const symbol of symbols) {
           try {
-            const unsubscribe = await creditIntelligenceService.subscribeToRealTimePriceUpdates(
+            const unsubscribe = await creditIntelligenceService.subscribeToChainlinkPriceUpdates(
               symbol,
               (priceData: RealTimePriceData) => {
-                console.log(`💲 Real-time price update for ${symbol}:`, priceData);
+                console.log(`🔗 Real-time Chainlink price update for ${symbol}:`, priceData);
                 
                 setPrices(prev => {
                   const updated = new Map(prev);
@@ -87,7 +104,7 @@ const RealTimePriceDisplay: React.FC<RealTimePriceDisplayProps> = ({
             
             newSubscriptions.set(symbol, unsubscribe);
           } catch (error) {
-            console.error(`Failed to subscribe to price updates for ${symbol}:`, error);
+            console.error(`Failed to subscribe to Chainlink price updates for ${symbol}:`, error);
             setConnectionStatus('error');
           }
         }
@@ -126,18 +143,34 @@ const RealTimePriceDisplay: React.FC<RealTimePriceDisplayProps> = ({
     const interval = setInterval(async () => {
       try {
         const { creditIntelligenceService } = await import('../services/creditIntelligenceService');
-        const batchPrices = await creditIntelligenceService.getBatchRealTimePrices(symbols);
         
-        if (batchPrices && batchPrices.prices) {
-          const priceMap = new Map();
-          for (const [symbol, priceData] of Object.entries(batchPrices.prices)) {
-            priceMap.set(symbol, priceData);
+        // Refresh Chainlink prices for all symbols
+        const priceMap = new Map();
+        
+        for (const symbol of symbols) {
+          try {
+            // Try Chainlink first, fallback to DEX
+            let priceData;
+            try {
+              priceData = await creditIntelligenceService.getChainlinkPriceRealTime(symbol);
+            } catch (chainlinkError) {
+              priceData = await creditIntelligenceService.getTokenPriceFromDEX(symbol);
+            }
+            
+            if (priceData && priceData.priceData) {
+              priceMap.set(symbol, priceData.priceData);
+            }
+          } catch (error) {
+            console.error(`Failed to refresh price for ${symbol}:`, error);
           }
+        }
+        
+        if (priceMap.size > 0) {
           setPrices(priceMap);
           setLastUpdate(Date.now());
         }
       } catch (error) {
-        console.error('Error refreshing prices:', error);
+        console.error('Error refreshing Chainlink prices:', error);
       }
     }, refreshInterval);
 

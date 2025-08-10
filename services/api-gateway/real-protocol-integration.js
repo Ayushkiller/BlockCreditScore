@@ -6,6 +6,9 @@
 const express = require('express');
 const router = express.Router();
 
+// Load environment variables from root directory
+require('dotenv').config({ path: '../../.env' });
+
 // Import the blockchain data manager, contract manager, and contract data fetcher
 let blockchainDataManager;
 let contractManager;
@@ -15,18 +18,23 @@ let connectionService;
 // Initialize the managers
 async function initializeManagers() {
   try {
-    // Dynamic import for ES modules
-    const { BlockchainDataManager } = await import('../blockchain-data/src/blockchain-data-manager.js');
-    const { RealContractManager } = await import('../blockchain-data/src/contract-manager.js');
-    const { RealContractDataFetcher } = await import('../blockchain-data/src/contract-data-fetcher.js');
-    const { EthereumConnectionService } = await import('../blockchain-data/src/ethereum-connection.js');
+    // Check if real data is enabled
+    if (process.env.REAL_DATA_ENABLED !== 'true') {
+      console.log('⚠️ Real data integration is disabled. Using mock data.');
+      return;
+    }
+
+    // Load blockchain data module using the JavaScript bridge
+    const { loadBlockchainDataModule } = require('../blockchain-data/index.js');
+    const blockchainDataModule = await loadBlockchainDataModule();
+    const { RealBlockchainDataManager, EthereumConnectionService, RealContractManager, RealContractDataFetcher } = blockchainDataModule;
     
     // Initialize connection service
     connectionService = new EthereumConnectionService();
     await connectionService.connect();
     
     // Initialize managers
-    blockchainDataManager = new BlockchainDataManager();
+    blockchainDataManager = new RealBlockchainDataManager();
     contractManager = new RealContractManager(connectionService);
     contractDataFetcher = new RealContractDataFetcher(connectionService, contractManager);
     

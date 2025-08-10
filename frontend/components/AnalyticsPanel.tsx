@@ -12,17 +12,65 @@ import {
   Activity,
   DollarSign,
   Percent,
-  RefreshCw
+  RefreshCw,
+  AlertTriangle,
+  TrendingDown,
+  Zap,
+  Database,
+  Network
 } from 'lucide-react';
 import RealMarketDataChart from './RealMarketDataChart';
 import MarketSentimentDisplay from './MarketSentimentDisplay';
 import ProtocolTVLDisplay from './ProtocolTVLDisplay';
+import RealTimePriceFeedAnalytics from './RealTimePriceFeedAnalytics';
+import RealTimeEventMonitor from './RealTimeEventMonitor';
+import EventMonitoringAnalytics from './EventMonitoringAnalytics';
+import RealTimeVolatilityMonitor from './RealTimeVolatilityMonitor';
+import PriceFeedSourceStatus from './PriceFeedSourceStatus';
 
 interface AnalyticsData {
   scoreHistory: { date: string; score: number; dimension: string }[];
   peerComparison: { percentile: number; averageScore: number; userScore: number };
   behaviorTrends: { category: string; trend: number; change: string }[];
   timeframeData: { [key: string]: any };
+}
+
+interface VolatilityData {
+  symbol: string;
+  currentPrice: number;
+  priceChange1h: number;
+  priceChange24h: number;
+  priceChange7d: number;
+  volatility1h: number;
+  volatility24h: number;
+  volatility7d: number;
+  standardDeviation: number;
+  averagePrice: number;
+  highPrice: number;
+  lowPrice: number;
+  priceRange: number;
+  timestamp: number;
+  dataPoints: number;
+}
+
+interface VolatilityAlert {
+  symbol: string;
+  alertType: 'high_volatility' | 'price_spike' | 'price_drop' | 'unusual_volume';
+  severity: 'low' | 'medium' | 'high' | 'critical';
+  currentValue: number;
+  threshold: number;
+  message: string;
+  timestamp: number;
+}
+
+interface PriceCacheMetrics {
+  hitRate: number;
+  missRate: number;
+  averageLatency: number;
+  stalePrices: number;
+  totalKeys: number;
+  memoryUsage: number;
+  healthStatus: 'healthy' | 'degraded' | 'unhealthy';
 }
 
 // Real Protocol Analytics Component with Enhanced Transaction Analysis
@@ -510,6 +558,28 @@ const RealProtocolAnalytics: React.FC<{ timeframe: string; privacyMode: boolean;
         </div>
       )}
 
+      {/* Event Monitoring Analytics */}
+      <EventMonitoringAnalytics
+        timeframe={timeframe}
+        privacyMode={privacyMode}
+        connectedAddress={connectedAddress}
+      />
+
+      {/* Real-Time Volatility Monitor */}
+      <RealTimeVolatilityMonitor
+        symbols={['ETH', 'BTC', 'USDC', 'USDT', 'DAI', 'LINK', 'UNI', 'AAVE']}
+        showAlerts={true}
+        showCharts={true}
+        refreshInterval={30000}
+        privacyMode={privacyMode}
+      />
+
+      {/* Price Feed Source Status */}
+      <PriceFeedSourceStatus
+        refreshInterval={15000}
+        showDetails={true}
+      />
+
       {/* Real Staking Behavior Analytics */}
       {stakingBehaviorData && (
         <div className="card">
@@ -646,6 +716,22 @@ const AnalyticsPanel: React.FC = () => {
   const [blockchainMetrics, setBlockchainMetrics] = useState<any>(null);
   const [loading, setLoading] = useState(false);
   const [connectedAddress, setConnectedAddress] = useState<string | null>(null);
+  const [volatilityData, setVolatilityData] = useState<VolatilityData[]>([]);
+  const [volatilityAlerts, setVolatilityAlerts] = useState<VolatilityAlert[]>([]);
+  const [priceCacheMetrics, setPriceCacheMetrics] = useState<PriceCacheMetrics | null>(null);
+  const [priceFailoverStatus, setPriceFailoverStatus] = useState<any>(null);
+  
+  // Score tracking state
+  const [showScoreHistory, setShowScoreHistory] = useState(true);
+  const [scoreChangeHistory, setScoreChangeHistory] = useState<any[]>([]);
+  const [scoreUpdateTriggers, setScoreUpdateTriggers] = useState<any[]>([]);
+  const [eventVerificationStats, setEventVerificationStats] = useState({
+    totalVerifications: 0,
+    successRate: 0,
+    averageConfidence: 0,
+    failedVerifications: 0
+  });
+  const [missedEventRecoveryStatus, setMissedEventRecoveryStatus] = useState<any>(null);
 
   // Load real analytics data
   useEffect(() => {
@@ -684,6 +770,107 @@ const AnalyticsPanel: React.FC = () => {
 
     loadRealAnalytics();
   }, [selectedTimeframe]);
+
+  // Load volatility data and price cache metrics
+  useEffect(() => {
+    const loadVolatilityData = async () => {
+      try {
+        // Fetch volatility data for all monitored tokens
+        const volatilityResponse = await fetch('http://localhost:3001/api/price-feeds/volatility-data');
+        if (volatilityResponse.ok) {
+          const volatilityResult = await volatilityResponse.json();
+          setVolatilityData(volatilityResult.tokens || []);
+        }
+
+        // Fetch recent volatility alerts
+        const alertsResponse = await fetch('http://localhost:3001/api/price-feeds/volatility-alerts');
+        if (alertsResponse.ok) {
+          const alertsResult = await alertsResponse.json();
+          setVolatilityAlerts(alertsResult.alerts || []);
+        }
+
+        // Fetch price cache metrics
+        const cacheResponse = await fetch('http://localhost:3001/api/price-feeds/cache-metrics');
+        if (cacheResponse.ok) {
+          const cacheResult = await cacheResponse.json();
+          setPriceCacheMetrics(cacheResult);
+        }
+
+        // Fetch price failover status
+        const failoverResponse = await fetch('http://localhost:3001/api/price-feeds/failover-status');
+        if (failoverResponse.ok) {
+          const failoverResult = await failoverResponse.json();
+          setPriceFailoverStatus(failoverResult);
+        }
+      } catch (error) {
+        console.error('Failed to load volatility data:', error);
+      }
+    };
+
+    loadVolatilityData();
+    
+    // Update volatility data every 30 seconds
+    const interval = setInterval(loadVolatilityData, 30000);
+    return () => clearInterval(interval);
+  }, []);
+
+  // Load score tracking data
+  useEffect(() => {
+    const loadScoreTrackingData = async () => {
+      if (!connectedAddress) return;
+
+      try {
+        const { creditIntelligenceService } = await import('../services/creditIntelligenceService');
+
+        // Load score change history
+        const scoreHistory = await creditIntelligenceService.getScoreChangeHistory?.(connectedAddress, selectedTimeframe);
+        if (scoreHistory) {
+          const formattedHistory = scoreHistory.map((change: any) => ({
+            dimension: change.dimension,
+            eventType: change.eventType,
+            protocol: change.protocol,
+            change: change.newScore - change.oldScore,
+            isPositive: change.newScore >= change.oldScore,
+            timestamp: change.timestamp,
+            confidence: change.confidence
+          }));
+          setScoreChangeHistory(formattedHistory);
+        }
+
+        // Load score update triggers
+        const triggers = await creditIntelligenceService.getScoreUpdateTriggers?.(connectedAddress);
+        if (triggers) {
+          setScoreUpdateTriggers(triggers);
+        }
+
+        // Load event verification statistics
+        const analytics = await creditIntelligenceService.getEventDrivenScoreAnalytics?.(connectedAddress);
+        if (analytics) {
+          setEventVerificationStats({
+            totalVerifications: analytics.totalVerifications || 0,
+            successRate: analytics.successRate || 0,
+            averageConfidence: analytics.averageConfidence || 0,
+            failedVerifications: analytics.failedVerifications || 0
+          });
+        }
+
+        // Load missed event recovery status
+        const recoveries = await creditIntelligenceService.getMissedEventRecoveries?.();
+        if (recoveries && recoveries.length > 0) {
+          setMissedEventRecoveryStatus(recoveries[recoveries.length - 1]); // Get latest recovery
+        }
+
+      } catch (error) {
+        console.error('Failed to load score tracking data:', error);
+      }
+    };
+
+    loadScoreTrackingData();
+
+    // Set up real-time updates every 30 seconds
+    const interval = setInterval(loadScoreTrackingData, 30000);
+    return () => clearInterval(interval);
+  }, [connectedAddress, selectedTimeframe]);
 
   // Use real data if available, otherwise fall back to mock data
   const analyticsData: AnalyticsData = realAnalyticsData || {
@@ -990,6 +1177,21 @@ const AnalyticsPanel: React.FC = () => {
         refreshInterval={600000}
       />
 
+      {/* Real-Time Chainlink Price Feed Analytics */}
+      <div className="card">
+        <div className="flex items-center space-x-3 mb-6">
+          <DollarSign className="w-6 h-6 text-green-600" />
+          <h3 className="text-xl font-semibold text-gray-900">Real-Time Chainlink Price Feed Analytics</h3>
+          <div className="text-sm text-gray-500 bg-green-100 px-2 py-1 rounded">
+            Live Data & Update Timestamps
+          </div>
+        </div>
+        
+        <RealTimePriceFeedAnalytics 
+          privacyMode={privacyMode}
+        />
+      </div>
+
       {/* Real Protocol Analytics Component */}
       <RealProtocolAnalytics 
         timeframe={selectedTimeframe}
@@ -1028,6 +1230,477 @@ const AnalyticsPanel: React.FC = () => {
             </div>
           ))}
         </div>
+      </div>
+
+      {/* Real-Time Price Volatility Analytics */}
+      {volatilityData.length > 0 && (
+        <div className="card">
+          <div className="flex items-center space-x-3 mb-6">
+            <TrendingUp className="w-6 h-6 text-orange-600" />
+            <h3 className="text-xl font-semibold text-gray-900">Real-Time Price Volatility Analytics</h3>
+            <div className="text-sm text-gray-500">
+              Live volatility monitoring using actual price data
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
+            {volatilityData.slice(0, 6).map((token, index) => (
+              <div key={index} className={`p-4 rounded-lg border ${
+                token.volatility24h > 50 ? 'border-red-200 bg-red-50' :
+                token.volatility24h > 30 ? 'border-orange-200 bg-orange-50' :
+                token.volatility24h > 15 ? 'border-yellow-200 bg-yellow-50' :
+                'border-green-200 bg-green-50'
+              }`}>
+                <div className="flex items-center justify-between mb-2">
+                  <h4 className="font-semibold text-gray-900">{token.symbol}</h4>
+                  <div className={`text-sm font-medium ${
+                    token.priceChange24h > 0 ? 'text-green-600' : 'text-red-600'
+                  }`}>
+                    {privacyMode ? '***' : `${token.priceChange24h > 0 ? '+' : ''}${token.priceChange24h.toFixed(2)}%`}
+                  </div>
+                </div>
+                
+                <div className="space-y-2 text-sm">
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Current Price:</span>
+                    <span className="font-medium">
+                      {privacyMode ? '***' : `$${token.currentPrice.toFixed(2)}`}
+                    </span>
+                  </div>
+                  
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">24h Volatility:</span>
+                    <span className={`font-medium ${
+                      token.volatility24h > 50 ? 'text-red-600' :
+                      token.volatility24h > 30 ? 'text-orange-600' :
+                      token.volatility24h > 15 ? 'text-yellow-600' :
+                      'text-green-600'
+                    }`}>
+                      {privacyMode ? '***' : `${token.volatility24h.toFixed(1)}%`}
+                    </span>
+                  </div>
+                  
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">7d Change:</span>
+                    <span className={`font-medium ${
+                      token.priceChange7d > 0 ? 'text-green-600' : 'text-red-600'
+                    }`}>
+                      {privacyMode ? '***' : `${token.priceChange7d > 0 ? '+' : ''}${token.priceChange7d.toFixed(2)}%`}
+                    </span>
+                  </div>
+                  
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Data Points:</span>
+                    <span className="font-medium text-gray-700">
+                      {privacyMode ? '***' : token.dataPoints.toLocaleString()}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Volatility Summary */}
+          <div className="bg-gray-50 p-4 rounded-lg">
+            <h4 className="font-medium text-gray-900 mb-3">Volatility Summary</h4>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+              <div className="text-center">
+                <div className="text-lg font-bold text-red-600">
+                  {privacyMode ? '***' : volatilityData.filter(t => t.volatility24h > 50).length}
+                </div>
+                <div className="text-gray-600">High Volatility</div>
+              </div>
+              <div className="text-center">
+                <div className="text-lg font-bold text-orange-600">
+                  {privacyMode ? '***' : volatilityData.filter(t => t.volatility24h > 30 && t.volatility24h <= 50).length}
+                </div>
+                <div className="text-gray-600">Medium Volatility</div>
+              </div>
+              <div className="text-center">
+                <div className="text-lg font-bold text-green-600">
+                  {privacyMode ? '***' : volatilityData.filter(t => t.volatility24h <= 15).length}
+                </div>
+                <div className="text-gray-600">Low Volatility</div>
+              </div>
+              <div className="text-center">
+                <div className="text-lg font-bold text-blue-600">
+                  {privacyMode ? '***' : volatilityData.reduce((sum, t) => sum + t.dataPoints, 0).toLocaleString()}
+                </div>
+                <div className="text-gray-600">Total Data Points</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Real-Time Volatility Alerts */}
+      {volatilityAlerts.length > 0 && (
+        <div className="card">
+          <div className="flex items-center space-x-3 mb-6">
+            <AlertTriangle className="w-6 h-6 text-red-600" />
+            <h3 className="text-xl font-semibold text-gray-900">Real-Time Volatility Alerts</h3>
+            <div className="text-sm text-gray-500">
+              Active alerts based on real price movements
+            </div>
+          </div>
+
+          <div className="space-y-3 max-h-64 overflow-y-auto">
+            {volatilityAlerts.slice(0, 10).map((alert, index) => (
+              <div key={index} className={`flex items-center justify-between p-3 rounded-lg border ${
+                alert.severity === 'critical' ? 'border-red-200 bg-red-50' :
+                alert.severity === 'high' ? 'border-orange-200 bg-orange-50' :
+                alert.severity === 'medium' ? 'border-yellow-200 bg-yellow-50' :
+                'border-blue-200 bg-blue-50'
+              }`}>
+                <div className="flex items-center space-x-3">
+                  <div className={`w-2 h-2 rounded-full ${
+                    alert.severity === 'critical' ? 'bg-red-500' :
+                    alert.severity === 'high' ? 'bg-orange-500' :
+                    alert.severity === 'medium' ? 'bg-yellow-500' :
+                    'bg-blue-500'
+                  }`}></div>
+                  <div>
+                    <div className="font-medium text-sm text-gray-900">
+                      {alert.symbol} - {alert.alertType.replace('_', ' ')}
+                    </div>
+                    <div className="text-xs text-gray-600">
+                      {alert.message}
+                    </div>
+                  </div>
+                </div>
+                
+                <div className="text-right">
+                  <div className={`text-sm font-medium ${
+                    alert.severity === 'critical' ? 'text-red-600' :
+                    alert.severity === 'high' ? 'text-orange-600' :
+                    alert.severity === 'medium' ? 'text-yellow-600' :
+                    'text-blue-600'
+                  }`}>
+                    {privacyMode ? '***' : `${alert.currentValue.toFixed(2)}%`}
+                  </div>
+                  <div className="text-xs text-gray-500">
+                    Threshold: {alert.threshold}%
+                  </div>
+                  <div className="text-xs text-gray-500">
+                    {new Date(alert.timestamp).toLocaleTimeString()}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Price Cache & Failover Status */}
+      {(priceCacheMetrics || priceFailoverStatus) && (
+        <div className="card">
+          <div className="flex items-center space-x-3 mb-6">
+            <Database className="w-6 h-6 text-blue-600" />
+            <h3 className="text-xl font-semibold text-gray-900">Price Feed Infrastructure Status</h3>
+            <div className="text-sm text-gray-500">
+              Real-time monitoring of price cache and failover systems
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* Price Cache Metrics */}
+            {priceCacheMetrics && (
+              <div className="bg-gray-50 p-4 rounded-lg">
+                <div className="flex items-center space-x-2 mb-3">
+                  <Database className="w-5 h-5 text-blue-600" />
+                  <h4 className="font-medium text-gray-900">Price Cache Performance</h4>
+                  <div className={`w-2 h-2 rounded-full ${
+                    priceCacheMetrics.healthStatus === 'healthy' ? 'bg-green-500' :
+                    priceCacheMetrics.healthStatus === 'degraded' ? 'bg-yellow-500' :
+                    'bg-red-500'
+                  }`}></div>
+                </div>
+                
+                <div className="space-y-2 text-sm">
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Hit Rate:</span>
+                    <span className="font-medium text-green-600">
+                      {privacyMode ? '***' : `${priceCacheMetrics.hitRate.toFixed(1)}%`}
+                    </span>
+                  </div>
+                  
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Avg Latency:</span>
+                    <span className="font-medium">
+                      {privacyMode ? '***' : `${priceCacheMetrics.averageLatency.toFixed(1)}ms`}
+                    </span>
+                  </div>
+                  
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Cached Prices:</span>
+                    <span className="font-medium">
+                      {privacyMode ? '***' : priceCacheMetrics.totalKeys.toLocaleString()}
+                    </span>
+                  </div>
+                  
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Stale Prices:</span>
+                    <span className={`font-medium ${
+                      priceCacheMetrics.stalePrices > 0 ? 'text-yellow-600' : 'text-green-600'
+                    }`}>
+                      {privacyMode ? '***' : priceCacheMetrics.stalePrices}
+                    </span>
+                  </div>
+                  
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Memory Usage:</span>
+                    <span className="font-medium">
+                      {privacyMode ? '***' : `${(priceCacheMetrics.memoryUsage / 1024 / 1024).toFixed(1)}MB`}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Price Failover Status */}
+            {priceFailoverStatus && (
+              <div className="bg-gray-50 p-4 rounded-lg">
+                <div className="flex items-center space-x-2 mb-3">
+                  <Network className="w-5 h-5 text-purple-600" />
+                  <h4 className="font-medium text-gray-900">Failover System Status</h4>
+                  <div className={`w-2 h-2 rounded-full ${
+                    priceFailoverStatus.healthySources === priceFailoverStatus.totalSources ? 'bg-green-500' :
+                    priceFailoverStatus.healthySources > 0 ? 'bg-yellow-500' :
+                    'bg-red-500'
+                  }`}></div>
+                </div>
+                
+                <div className="space-y-2 text-sm">
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Healthy Sources:</span>
+                    <span className="font-medium text-green-600">
+                      {privacyMode ? '***' : `${priceFailoverStatus.healthySources}/${priceFailoverStatus.totalSources}`}
+                    </span>
+                  </div>
+                  
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Enabled Sources:</span>
+                    <span className="font-medium">
+                      {privacyMode ? '***' : priceFailoverStatus.enabledSources}
+                    </span>
+                  </div>
+                  
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Circuit Breakers:</span>
+                    <span className={`font-medium ${
+                      priceFailoverStatus.circuitBreakersOpen > 0 ? 'text-red-600' : 'text-green-600'
+                    }`}>
+                      {privacyMode ? '***' : `${priceFailoverStatus.circuitBreakersOpen} Open`}
+                    </span>
+                  </div>
+                  
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Primary Source:</span>
+                    <span className="font-medium">
+                      {privacyMode ? '***' : 
+                        priceFailoverStatus.sources?.find((s: any) => s.priority === 1)?.name || 'None'}
+                    </span>
+                  </div>
+                  
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Failover Ready:</span>
+                    <span className={`font-medium ${
+                      priceFailoverStatus.healthySources > 1 ? 'text-green-600' : 'text-red-600'
+                    }`}>
+                      {priceFailoverStatus.healthySources > 1 ? '✓ Yes' : '✗ No'}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Real-Time Score Change History */}
+      <div className="card">
+        <div className="flex items-center justify-between mb-6">
+          <div className="flex items-center space-x-3">
+            <Activity className="w-6 h-6 text-blue-600" />
+            <h3 className="text-xl font-semibold text-gray-900">Score Change History & Triggers</h3>
+          </div>
+          <button
+            onClick={() => setShowScoreHistory(!showScoreHistory)}
+            className="flex items-center space-x-2 px-3 py-2 text-sm bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200 transition-colors"
+          >
+            {showScoreHistory ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
+            <span>{showScoreHistory ? 'Hide' : 'Show'} Details</span>
+          </button>
+        </div>
+
+        {showScoreHistory && (
+          <div className="space-y-6">
+            {/* Score Change Timeline */}
+            <div>
+              <h4 className="font-medium text-gray-900 mb-4">Recent Score Changes</h4>
+              {scoreChangeHistory.length === 0 ? (
+                <div className="text-center py-8 text-gray-500">
+                  <TrendingUp className="w-12 h-12 mx-auto mb-4 opacity-50" />
+                  <p>No score changes recorded yet</p>
+                  <p className="text-sm mt-1">Score changes will appear here as blockchain events are processed</p>
+                </div>
+              ) : (
+                <div className="space-y-3 max-h-64 overflow-y-auto">
+                  {scoreChangeHistory.slice(0, 10).map((change, index) => (
+                    <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                      <div className="flex items-center space-x-3">
+                        <div className={`w-2 h-2 rounded-full ${
+                          change.isPositive ? 'bg-green-500' : 'bg-red-500'
+                        }`}></div>
+                        <div>
+                          <div className="font-medium text-gray-900 capitalize">
+                            {change.dimension.replace(/([A-Z])/g, ' $1').trim()}
+                          </div>
+                          <div className="text-sm text-gray-600">
+                            {change.eventType} on {change.protocol}
+                          </div>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <div className={`font-medium ${
+                          change.isPositive ? 'text-green-600' : 'text-red-600'
+                        }`}>
+                          {privacyMode ? '***' : `${change.isPositive ? '+' : ''}${change.change.toFixed(1)}`}
+                        </div>
+                        <div className="text-xs text-gray-500">
+                          {new Date(change.timestamp * 1000).toLocaleDateString()}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Score Update Triggers */}
+            <div>
+              <h4 className="font-medium text-gray-900 mb-4">Active Score Update Triggers</h4>
+              {scoreUpdateTriggers.length === 0 ? (
+                <div className="text-center py-6 text-gray-500">
+                  <Zap className="w-10 h-10 mx-auto mb-3 opacity-50" />
+                  <p>No active triggers configured</p>
+                  <p className="text-sm mt-1">Set up triggers to get notified of score changes</p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {scoreUpdateTriggers.map((trigger, index) => (
+                    <div key={index} className="border border-gray-200 rounded-lg p-4">
+                      <div className="flex items-center justify-between mb-2">
+                        <div className="font-medium text-gray-900 capitalize">
+                          {trigger.eventType.replace(/_/g, ' ')}
+                        </div>
+                        <div className={`px-2 py-1 rounded-full text-xs ${
+                          trigger.isActive ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-700'
+                        }`}>
+                          {trigger.isActive ? 'Active' : 'Inactive'}
+                        </div>
+                      </div>
+                      <div className="text-sm text-gray-600 space-y-1">
+                        <div>Confirmations: {trigger.confirmationThreshold}</div>
+                        <div>Total Triggers: {privacyMode ? '***' : trigger.totalTriggers}</div>
+                        {trigger.lastTriggered && (
+                          <div>Last: {new Date(trigger.lastTriggered).toLocaleDateString()}</div>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Event Verification Statistics */}
+            <div>
+              <h4 className="font-medium text-gray-900 mb-4">Event Verification Statistics</h4>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <div className="bg-blue-50 p-4 rounded-lg">
+                  <div className="text-2xl font-bold text-blue-900">
+                    {privacyMode ? '***' : eventVerificationStats.totalVerifications.toLocaleString()}
+                  </div>
+                  <div className="text-sm text-blue-700">Total Verifications</div>
+                </div>
+                <div className="bg-green-50 p-4 rounded-lg">
+                  <div className="text-2xl font-bold text-green-900">
+                    {privacyMode ? '***' : `${eventVerificationStats.successRate.toFixed(1)}%`}
+                  </div>
+                  <div className="text-sm text-green-700">Success Rate</div>
+                </div>
+                <div className="bg-yellow-50 p-4 rounded-lg">
+                  <div className="text-2xl font-bold text-yellow-900">
+                    {privacyMode ? '***' : `${eventVerificationStats.averageConfidence.toFixed(1)}%`}
+                  </div>
+                  <div className="text-sm text-yellow-700">Avg Confidence</div>
+                </div>
+                <div className="bg-purple-50 p-4 rounded-lg">
+                  <div className="text-2xl font-bold text-purple-900">
+                    {privacyMode ? '***' : eventVerificationStats.failedVerifications.toLocaleString()}
+                  </div>
+                  <div className="text-sm text-purple-700">Failed Verifications</div>
+                </div>
+              </div>
+            </div>
+
+            {/* Block Scanning Progress */}
+            {missedEventRecoveryStatus && (
+              <div>
+                <h4 className="font-medium text-gray-900 mb-4">Missed Event Recovery Status</h4>
+                <div className={`p-4 rounded-lg border ${
+                  missedEventRecoveryStatus.status === 'completed' 
+                    ? 'bg-green-50 border-green-200' 
+                    : missedEventRecoveryStatus.status === 'failed'
+                      ? 'bg-red-50 border-red-200'
+                      : 'bg-blue-50 border-blue-200'
+                }`}>
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="flex items-center space-x-2">
+                      <RefreshCw className={`w-5 h-5 ${
+                        missedEventRecoveryStatus.status === 'in_progress' ? 'animate-spin' : ''
+                      } ${
+                        missedEventRecoveryStatus.status === 'completed' 
+                          ? 'text-green-600' 
+                          : missedEventRecoveryStatus.status === 'failed'
+                            ? 'text-red-600'
+                            : 'text-blue-600'
+                      }`} />
+                      <span className="font-medium">
+                        {missedEventRecoveryStatus.status === 'in_progress' ? 'Scanning in Progress' :
+                         missedEventRecoveryStatus.status === 'completed' ? 'Scan Completed' : 'Scan Failed'}
+                      </span>
+                    </div>
+                    <div className="text-sm text-gray-600">
+                      Blocks {missedEventRecoveryStatus.fromBlock} - {missedEventRecoveryStatus.toBlock}
+                    </div>
+                  </div>
+                  
+                  <div className="grid grid-cols-2 gap-4 text-sm">
+                    <div>
+                      <span className="text-gray-600">Events Recovered:</span>
+                      <span className="ml-2 font-medium">
+                        {privacyMode ? '***' : missedEventRecoveryStatus.recoveredEvents}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-gray-600">Score Updates:</span>
+                      <span className="ml-2 font-medium">
+                        {privacyMode ? '***' : missedEventRecoveryStatus.processedScoreUpdates}
+                      </span>
+                    </div>
+                  </div>
+                  
+                  {missedEventRecoveryStatus.errors.length > 0 && (
+                    <div className="mt-3 text-sm text-red-600">
+                      {missedEventRecoveryStatus.errors.length} errors occurred during recovery
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Data Export Options */}

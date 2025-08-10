@@ -1,11 +1,13 @@
-require('dotenv').config();
+require('dotenv').config({ path: '../../.env' });
 
 const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
 const morgan = require('morgan');
+const http = require('http');
 const { blockchainIntegration } = require('./blockchain-integration');
 const realProtocolIntegration = require('./real-protocol-integration');
+const websocketServer = require('./websocket-server');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -369,6 +371,20 @@ app.get('/api/blockchain/current-block', async (req, res) => {
 // Real Protocol Integration Routes
 app.use('/api/protocols', realProtocolIntegration);
 
+// Real-Time Price Feed Integration Routes
+const priceFeedIntegration = require('./price-feed-integration');
+app.use('/api/price-feeds', priceFeedIntegration);
+
+// WebSocket status endpoint
+app.get('/api/websocket/status', (req, res) => {
+  const stats = websocketServer.getStats();
+  res.json({
+    success: true,
+    websocket: stats,
+    timestamp: Date.now()
+  });
+});
+
 // Real User Behavior Analysis Routes
 app.get('/api/blockchain/user-behavior-profile/:address', async (req, res) => {
   const { address } = req.params;
@@ -597,7 +613,10 @@ app.use((req, res) => {
   });
 });
 
-app.listen(PORT, async () => {
+// Create HTTP server for WebSocket support
+const server = http.createServer(app);
+
+server.listen(PORT, async () => {
   console.log(`
 ========================================
 🚀 CryptoVault API Gateway Started
@@ -618,8 +637,18 @@ Available Endpoints:
 - GET  /api/blockchain/transaction/:hash
 - GET  /api/blockchain/transaction/:hash/receipt
 - GET  /api/blockchain/current-block
+- WS   /ws/transactions (WebSocket)
 ========================================
   `);
+
+  // Initialize WebSocket server
+  console.log('📡 Initializing WebSocket server...');
+  try {
+    websocketServer.initialize(server);
+    console.log('✅ WebSocket server ready');
+  } catch (error) {
+    console.error('❌ Failed to initialize WebSocket server:', error.message);
+  }
 
   // Initialize blockchain integration service
   console.log('🔗 Initializing blockchain integration...');
@@ -635,12 +664,18 @@ Available Endpoints:
 // Graceful shutdown
 process.on('SIGTERM', async () => {
   console.log('🛑 Received SIGTERM, shutting down gracefully...');
+  websocketServer.stop();
   await blockchainIntegration.disconnect();
-  process.exit(0);
+  server.close(() => {
+    process.exit(0);
+  });
 });
 
 process.on('SIGINT', async () => {
   console.log('🛑 Received SIGINT, shutting down gracefully...');
+  websocketServer.stop();
   await blockchainIntegration.disconnect();
-  process.exit(0);
+  server.close(() => {
+    process.exit(0);
+  });
 });

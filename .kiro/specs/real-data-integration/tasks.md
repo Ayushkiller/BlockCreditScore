@@ -104,8 +104,8 @@
   - Display actual transaction frequency and pattern analysis in frontend
   - _Requirements: 4.5, 4.6_
 
-- [ ] 6. Implement real-time price feed management
-- [ ] 6.1 Replace mock price feeds with live Chainlink integration and update frontend price displays
+- [-] 6. Implement real-time price feed management
+- [x] 6.1 Replace mock price feeds with live Chainlink integration and update frontend price displays
   - Replace hardcoded price values with actual Chainlink price feed contract calls
   - Implement real-time price update subscriptions using Chainlink AnswerUpdated events
   - Add real token price fetching from DEX aggregators like 1inch API or 0x API
@@ -130,7 +130,7 @@
   - _Requirements: 5.5, 5.6_
 
 - [-] 7. Replace mock event monitoring with real blockchain event subscriptions
-- [ ] 7.1 Implement real-time blockchain event monitoring and update frontend event displays
+- [x] 7.1 Implement real-time blockchain event monitoring and update frontend event displays
   - Replace simulated events with actual WebSocket event subscriptions to Ethereum nodes
   - Add real contract event filtering using actual contract addresses and event signatures
   - Implement real block confirmation monitoring and chain reorganization handling
@@ -142,7 +142,7 @@
   - Display actual block confirmation status and chain reorganization alerts in frontend
   - _Requirements: 6.1, 6.2, 6.3, 6.4_
 
-- [ ] 7.2 Build real event processing and score updates with frontend score tracking
+- [x] 7.2 Build real event processing and score updates with frontend score tracking
   - Replace mock score updates with real blockchain event-triggered updates
   - Implement real missed event recovery using block range scanning
   - Add real event verification using actual transaction and receipt data

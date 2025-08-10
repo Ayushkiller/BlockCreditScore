@@ -24,6 +24,8 @@ import {
 import { useCreditIntelligence } from "../contexts/CreditIntelligenceContext";
 import RealTimePriceDisplay from "./RealTimePriceDisplay";
 import USDValueDisplay from "./USDValueDisplay";
+import RealTimeEventMonitor from "./RealTimeEventMonitor";
+import RealTimeScoreTracker from "./RealTimeScoreTracker";
 
 interface CreditDimension {
   name: string;
@@ -2115,6 +2117,25 @@ const CreditDashboard: React.FC = () => {
           </div>
         </div>
       </div>
+
+      {/* Real-Time Blockchain Event Monitor */}
+      <RealTimeEventMonitor
+        userAddress={connectedAddress}
+        privacyMode={privacyMode}
+        showNotifications={true}
+        maxEvents={50}
+      />
+
+      {/* Real-Time Score Tracker */}
+      <RealTimeScoreTracker
+        userAddress={connectedAddress}
+        privacyMode={privacyMode}
+        onScoreUpdate={(update) => {
+          console.log('Score update received in dashboard:', update);
+          // Optionally refresh the profile data when scores are updated
+          // This could trigger a re-fetch of the credit profile
+        }}
+      />
 
       {/* Real DeFi Protocol Positions */}
       <div className="card">

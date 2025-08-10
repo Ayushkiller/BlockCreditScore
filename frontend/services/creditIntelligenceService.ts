@@ -1,6 +1,10 @@
 // Credit Intelligence Service
 // This service would connect to your deployed smart contracts and backend services
 
+import { subscribe } from "diagnostics_channel";
+import { verify } from "crypto";
+import { custom } from "viem";
+import { profile } from "console";
 import { url } from "inspector";
 
 export interface CreditProfile {
@@ -216,6 +220,21 @@ class CreditIntelligenceService {
         break;
       case 'priceFeedError':
         this.notifyListeners('priceFeedError', payload);
+        break;
+      case 'scoreUpdated':
+        this.notifyListeners('scoreUpdated', payload);
+        break;
+      case 'eventVerification':
+        this.notifyListeners('eventVerification', payload);
+        break;
+      case 'missedEventRecovery':
+        this.notifyListeners('missedEventRecovery', payload);
+        break;
+      case 'processingStats':
+        this.notifyListeners('processingStats', payload);
+        break;
+      case 'scoreUpdateTriggered':
+        this.notifyListeners('scoreUpdateTriggered', payload);
         break;
       default:
         console.log('Unknown real-time update type:', type);
@@ -492,6 +511,62 @@ class CreditIntelligenceService {
   }
 
   /**
+   * Get event patterns for analytics
+   */
+  async getEventPatterns(timeframe: string): Promise<any[]> {
+    try {
+      const response = await fetch(`${this.baseUrl}/api/blockchain/event-patterns?timeframe=${timeframe}`);
+      if (!response.ok) return [];
+      return await response.json();
+    } catch (error) {
+      console.error('Error fetching event patterns:', error);
+      return [];
+    }
+  }
+
+  /**
+   * Get protocol event statistics
+   */
+  async getProtocolEventStats(timeframe: string): Promise<any> {
+    try {
+      const response = await fetch(`${this.baseUrl}/api/blockchain/protocol-event-stats?timeframe=${timeframe}`);
+      if (!response.ok) return {};
+      return await response.json();
+    } catch (error) {
+      console.error('Error fetching protocol event stats:', error);
+      return {};
+    }
+  }
+
+  /**
+   * Get event monitoring performance metrics
+   */
+  async getEventMonitoringPerformance(): Promise<any> {
+    try {
+      const response = await fetch(`${this.baseUrl}/api/blockchain/monitoring-performance`);
+      if (!response.ok) return null;
+      return await response.json();
+    } catch (error) {
+      console.error('Error fetching event monitoring performance:', error);
+      return null;
+    }
+  }
+
+  /**
+   * Get chain reorganizations
+   */
+  async getChainReorganizations(): Promise<any[]> {
+    try {
+      const response = await fetch(`${this.baseUrl}/api/blockchain/chain-reorganizations`);
+      if (!response.ok) return [];
+      return await response.json();
+    } catch (error) {
+      console.error('Error fetching chain reorganizations:', error);
+      return [];
+    }
+  }
+
+  /**
    * Subscribe to blockchain connection status updates
    */
   async subscribeToConnectionStatus(callback: (status: any) => void): Promise<() => void> {
@@ -617,20 +692,21 @@ class CreditIntelligenceService {
   }
 
   /**
-   * Convert token amount to USD using real-time prices
+   * Convert token amount to USD using real-time Chainlink prices
    */
   async convertToUSD(tokenSymbol: string, amount: string, decimals: number = 18): Promise<number> {
     try {
-      const response = await fetch(`${this.baseUrl}/api/market-data/convert-to-usd`, {
+      // Use the new real-time price feed conversion endpoint
+      const response = await fetch(`${this.baseUrl}/api/price-feeds/convert-to-usd`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ tokenSymbol, amount, decimals })
       });
       if (!response.ok) return 0;
       const result = await response.json();
-      return result.usdValue || 0;
+      return result.conversion?.usdValue || 0;
     } catch (error) {
-      console.error('Error converting to USD:', error);
+      console.error('Error converting to USD using Chainlink prices:', error);
       return 0;
     }
   }
@@ -686,19 +762,6 @@ class CreditIntelligenceService {
     }
   }
 
-  /**
-   * Get price feed health check
-   */
-  async getPriceFeedHealthCheck(): Promise<any> {
-    try {
-      const response = await fetch(`${this.baseUrl}/api/market-data/health-check`);
-      if (!response.ok) return null;
-      return await response.json();
-    } catch (error) {
-      console.error('Error fetching price feed health check:', error);
-      return null;
-    }
-  }
 
   // Real DeFi Market Data Integration Methods
 
@@ -821,6 +884,303 @@ class CreditIntelligenceService {
     } catch (error) {
       console.error('Error getting market sentiment analysis:', error);
       return null;
+    }
+  }
+
+  // Real Price Cache and Failover Integration Methods
+
+  /**
+   * Get price cache status and metrics
+   */
+  async getPriceCacheStatus(): Promise<any> {
+    try {
+      const response = await fetch(`${this.baseUrl}/api/price-feeds/cache-status`);
+      if (!response.ok) return null;
+      return await response.json();
+    } catch (error) {
+      console.error('Error fetching price cache status:', error);
+      return null;
+    }
+  }
+
+  /**
+   * Get price cache metrics including hit rates and staleness
+   */
+  async getPriceCacheMetrics(): Promise<any> {
+    try {
+      const response = await fetch(`${this.baseUrl}/api/price-feeds/cache-metrics`);
+      if (!response.ok) return null;
+      return await response.json();
+    } catch (error) {
+      console.error('Error fetching price cache metrics:', error);
+      return null;
+    }
+  }
+
+  /**
+   * Get cached prices with staleness information
+   */
+  async getCachedPrices(symbols?: string[]): Promise<any> {
+    try {
+      const url = symbols && symbols.length > 0 
+        ? `${this.baseUrl}/api/price-feeds/cached-prices?symbols=${symbols.join(',')}`
+        : `${this.baseUrl}/api/price-feeds/cached-prices`;
+      
+      const response = await fetch(url);
+      if (!response.ok) return {};
+      return await response.json();
+    } catch (error) {
+      console.error('Error fetching cached prices:', error);
+      return {};
+    }
+  }
+
+  /**
+   * Get price feed failover status
+   */
+  async getPriceFailoverStatus(): Promise<any> {
+    try {
+      const response = await fetch(`${this.baseUrl}/api/price-feeds/failover-status`);
+      if (!response.ok) return null;
+      return await response.json();
+    } catch (error) {
+      console.error('Error fetching price failover status:', error);
+      return null;
+    }
+  }
+
+  /**
+   * Get price feed health check
+   */
+  async getPriceFeedHealthCheck(): Promise<any> {
+    try {
+      const response = await fetch(`${this.baseUrl}/api/price-feeds/health-check`);
+      if (!response.ok) return null;
+      return await response.json();
+    } catch (error) {
+      console.error('Error fetching price feed health check:', error);
+      return null;
+    }
+  }
+
+  /**
+   * Get real-time price with failover handling
+   */
+  async getRealTimePriceWithFailover(symbol: string, requiredFreshness?: number): Promise<any> {
+    try {
+      const params = new URLSearchParams({ symbol });
+      if (requiredFreshness) {
+        params.append('requiredFreshness', requiredFreshness.toString());
+      }
+
+      const response = await fetch(`${this.baseUrl}/api/price-feeds/price-with-failover?${params}`);
+      if (!response.ok) return null;
+      return await response.json();
+    } catch (error) {
+      console.error(`Error fetching real-time price with failover for ${symbol}:`, error);
+      return null;
+    }
+  }
+
+  /**
+   * Get batch prices with failover handling
+   */
+  async getBatchPricesWithFailover(symbols: string[], requiredFreshness?: number): Promise<any> {
+    try {
+      const response = await fetch(`${this.baseUrl}/api/price-feeds/batch-prices-with-failover`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ symbols, requiredFreshness })
+      });
+      if (!response.ok) return {};
+      return await response.json();
+    } catch (error) {
+      console.error('Error fetching batch prices with failover:', error);
+      return {};
+    }
+  }
+
+  /**
+   * Subscribe to price cache events (cache hits, misses, staleness alerts)
+   */
+  async subscribeToPriceCacheEvents(callback: (event: any) => void): Promise<() => void> {
+    // Request price cache monitoring
+    if (this.wsConnection && this.wsConnection.readyState === WebSocket.OPEN) {
+      this.wsConnection.send(JSON.stringify({
+        type: 'subscribePriceCacheEvents'
+      }));
+    }
+
+    return this.subscribe('priceCacheEvent', callback);
+  }
+
+  /**
+   * Get volatility data for a specific token
+   */
+  async getTokenVolatilityData(symbol: string): Promise<any> {
+    try {
+      const response = await fetch(`${this.baseUrl}/api/price-feeds/volatility-data/${symbol}`);
+      if (!response.ok) return null;
+      return await response.json();
+    } catch (error) {
+      console.error(`Error fetching volatility data for ${symbol}:`, error);
+      return null;
+    }
+  }
+
+  /**
+   * Get recent volatility alerts
+   */
+  async getVolatilityAlerts(limit: number = 50): Promise<any[]> {
+    try {
+      const response = await fetch(`${this.baseUrl}/api/price-feeds/volatility-alerts?limit=${limit}`);
+      if (!response.ok) return [];
+      const result = await response.json();
+      return result.alerts || [];
+    } catch (error) {
+      console.error('Error fetching volatility alerts:', error);
+      return [];
+    }
+  }
+
+  /**
+   * Subscribe to real-time volatility alerts
+   */
+  async subscribeToVolatilityAlerts(callback: (alert: any) => void): Promise<() => void> {
+    // Request volatility alert monitoring
+    if (this.wsConnection && this.wsConnection.readyState === WebSocket.OPEN) {
+      this.wsConnection.send(JSON.stringify({
+        type: 'subscribeVolatilityAlerts'
+      }));
+    }
+
+    return this.subscribe('volatilityAlert', callback);
+  }
+
+  /**
+   * Get volatility monitoring status
+   */
+  async getVolatilityMonitoringStatus(): Promise<any> {
+    try {
+      const response = await fetch(`${this.baseUrl}/api/price-feeds/volatility-status`);
+      if (!response.ok) return null;
+      return await response.json();
+    } catch (error) {
+      console.error('Error fetching volatility monitoring status:', error);
+      return null;
+    }
+  }
+
+  /**
+   * Get price history for volatility analysis
+   */
+  async getPriceHistoryForVolatility(symbol: string, timeWindow?: number): Promise<any[]> {
+    try {
+      const params = new URLSearchParams({ symbol });
+      if (timeWindow) {
+        params.append('timeWindow', timeWindow.toString());
+      }
+
+      const response = await fetch(`${this.baseUrl}/api/price-feeds/price-history?${params}`);
+      if (!response.ok) return [];
+      return await response.json();
+    } catch (error) {
+      console.error(`Error fetching price history for ${symbol}:`, error);
+      return [];
+    }
+  }
+
+  /**
+   * Clear stale prices from cache
+   */
+  async clearStalePrices(): Promise<any> {
+    try {
+      const response = await fetch(`${this.baseUrl}/api/price-feeds/clear-stale-prices`, {
+        method: 'POST'
+      });
+      if (!response.ok) return null;
+      return await response.json();
+    } catch (error) {
+      console.error('Error clearing stale prices:', error);
+      return null;
+    }
+  }
+
+  /**
+   * Reset price cache statistics
+   */
+  async resetPriceCacheStats(): Promise<boolean> {
+    try {
+      const response = await fetch(`${this.baseUrl}/api/price-feeds/reset-cache-stats`, {
+        method: 'POST'
+      });
+      return response.ok;
+    } catch (error) {
+      console.error('Error resetting price cache stats:', error);
+      return false;
+    }
+  }
+
+  /**
+   * Enable or disable a price source
+   */
+  async setPriceSourceEnabled(sourceName: string, enabled: boolean): Promise<boolean> {
+    try {
+      const response = await fetch(`${this.baseUrl}/api/price-feeds/source-enabled`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sourceName, enabled })
+      });
+      return response.ok;
+    } catch (error) {
+      console.error(`Error setting price source ${sourceName} enabled status:`, error);
+      return false;
+    }
+  }
+
+  /**
+   * Reset statistics for a price source
+   */
+  async resetPriceSourceStats(sourceName: string): Promise<boolean> {
+    try {
+      const response = await fetch(`${this.baseUrl}/api/price-feeds/reset-source-stats`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sourceName })
+      });
+      return response.ok;
+    } catch (error) {
+      console.error(`Error resetting stats for price source ${sourceName}:`, error);
+      return false;
+    }
+  }
+
+  /**
+   * Enhanced convert to USD with cache and failover handling
+   */
+  async convertToUSDWithFailover(
+    tokenSymbol: string,
+    amount: string,
+    decimals: number = 18,
+    requiredFreshness?: number
+  ): Promise<number> {
+    try {
+      // Use the enhanced conversion endpoint with failover support
+      const response = await fetch(`${this.baseUrl}/api/price-feeds/convert-to-usd-with-failover`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ tokenSymbol, amount, decimals, requiredFreshness })
+      });
+      
+      if (!response.ok) return 0;
+      
+      const result = await response.json();
+      return result.conversion?.usdValue || 0;
+    } catch (error) {
+      console.error(`Error converting ${tokenSymbol} to USD with failover:`, error);
+      
+      // Fallback to basic conversion
+      return this.convertToUSD(tokenSymbol, amount, decimals);
     }
   }
 
@@ -1010,6 +1370,143 @@ class CreditIntelligenceService {
     }
   }
 
+  // Real-Time Chainlink Price Feed Integration Methods
+
+  /**
+   * Get real-time Chainlink price with WebSocket subscription
+   */
+  async getChainlinkPriceRealTime(symbol: string): Promise<any> {
+    try {
+      const response = await fetch(`${this.baseUrl}/api/price-feeds/chainlink/${symbol}`);
+      if (!response.ok) return null;
+      return await response.json();
+    } catch (error) {
+      console.error(`Error fetching Chainlink price for ${symbol}:`, error);
+      return null;
+    }
+  }
+
+  /**
+   * Get token price from DEX aggregators (1inch, 0x)
+   */
+  async getTokenPriceFromDEX(symbol: string): Promise<any> {
+    try {
+      const response = await fetch(`${this.baseUrl}/api/price-feeds/dex/${symbol}`);
+      if (!response.ok) return null;
+      return await response.json();
+    } catch (error) {
+      console.error(`Error fetching DEX price for ${symbol}:`, error);
+      return null;
+    }
+  }
+
+  /**
+   * Subscribe to real-time Chainlink price updates using AnswerUpdated events
+   */
+  async subscribeToChainlinkPriceUpdates(
+    symbol: string,
+    callback: (priceData: any) => void
+  ): Promise<() => void> {
+    // Request Chainlink price monitoring for this symbol
+    if (this.wsConnection && this.wsConnection.readyState === WebSocket.OPEN) {
+      this.wsConnection.send(JSON.stringify({
+        type: 'subscribeChainlinkPrice',
+        symbol: symbol
+      }));
+    }
+
+    return this.subscribe('chainlinkPriceUpdate', (data: any) => {
+      if (data.symbol === symbol) {
+        callback(data);
+      }
+    });
+  }
+
+  /**
+   * Get real USD conversion using actual exchange rates
+   */
+  async convertTokenToUSDReal(
+    tokenSymbol: string,
+    amount: string,
+    decimals: number = 18
+  ): Promise<number> {
+    try {
+      const response = await fetch(`${this.baseUrl}/api/price-feeds/convert-to-usd`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ tokenSymbol, amount, decimals })
+      });
+      if (!response.ok) return 0;
+      const result = await response.json();
+      return result.usdValue || 0;
+    } catch (error) {
+      console.error('Error converting token to USD:', error);
+      return 0;
+    }
+  }
+
+  /**
+   * Get real-time price feed status and confidence metrics
+   */
+  async getPriceFeedStatus(): Promise<any> {
+    try {
+      const response = await fetch(`${this.baseUrl}/api/price-feeds/status`);
+      if (!response.ok) return null;
+      return await response.json();
+    } catch (error) {
+      console.error('Error fetching price feed status:', error);
+      return null;
+    }
+  }
+
+  /**
+   * Get price feed staleness and confidence metrics
+   */
+  async getPriceFeedMetrics(symbol: string): Promise<any> {
+    try {
+      const response = await fetch(`${this.baseUrl}/api/price-feeds/metrics/${symbol}`);
+      if (!response.ok) return null;
+      return await response.json();
+    } catch (error) {
+      console.error(`Error fetching price feed metrics for ${symbol}:`, error);
+      return null;
+    }
+  }
+
+  /**
+   * Get all cached prices with staleness information
+   */
+  async getAllCachedPrices(): Promise<any[]> {
+    try {
+      const response = await fetch(`${this.baseUrl}/api/price-feeds/cached-prices`);
+      if (!response.ok) return [];
+      return await response.json();
+    } catch (error) {
+      console.error('Error fetching cached prices:', error);
+      return [];
+    }
+  }
+
+  /**
+   * Perform price feed health check
+   */
+/**
+ * Performs a health check on the price feeds.
+ */
+async performPriceFeedHealthCheck(): Promise<any> {
+  try {
+    const response = await fetch(`${this.baseUrl}/api/price-feeds/health-check`);
+    if (!response.ok) {
+      return null;
+    }
+    return await response.json();
+  } catch (error) {
+    console.error('Error performing price feed health check:', error);
+    return null;
+  }
+}
+
+
   /**
    * Get comprehensive user behavior profile using real blockchain data
    */
@@ -1130,62 +1627,69 @@ class CreditIntelligenceService {
     }
   }
 
-  /**
-   * Get gas efficiency metrics for a user
-   */
-  async getGasEfficiencyMetrics(address: string): Promise<any> {
-    try {
-      const response = await fetch(`${this.baseUrl}/api/blockchain/gas-efficiency/${address}`);
-      if (!response.ok) return null;
-      return await response.json();
-    } catch (error) {
-      console.error('Error fetching gas efficiency metrics:', error);
+/**
+ * Get gas efficiency metrics for a user
+ */
+async getGasEfficiencyMetrics(address: string): Promise<any> {
+  try {
+    const response = await fetch(`${this.baseUrl}/api/blockchain/gas-efficiency/${address}`);
+    if (!response.ok) {
       return null;
     }
+    return await response.json();
+  } catch (error) {
+    console.error('Error fetching gas efficiency metrics:', error);
+    return null;
   }
+}
 
-  /**
-   * Get protocol usage patterns for a user
-   */
-  async getProtocolUsagePatterns(address: string, timeframe: string): Promise<any> {
-    try {
-      const response = await fetch(`${this.baseUrl}/api/blockchain/protocol-usage-patterns/${address}?timeframe=${timeframe}`);
-      if (!response.ok) return null;
-      return await response.json();
-    } catch (error) {
-      console.error('Error fetching protocol usage patterns:', error);
+/**
+ * Get protocol usage patterns for a user
+ */
+async getProtocolUsagePatterns(address: string, timeframe: string): Promise<any> {
+  try {
+    const response = await fetch(`${this.baseUrl}/api/blockchain/protocol-usage-patterns/${address}?timeframe=${timeframe}`);
+    if (!response.ok) {
       return null;
     }
+    return await response.json();
+  } catch (error) {
+    console.error('Error fetching protocol usage patterns:', error);
+    return null;
   }
+}
 
-  /**
-   * Get real transaction frequency analysis
-   */
-  async getTransactionFrequencyAnalysis(address: string): Promise<any> {
-    try {
-      const response = await fetch(`${this.baseUrl}/api/blockchain/transaction-frequency/${address}`);
-      if (!response.ok) return null;
-      return await response.json();
-    } catch (error) {
-      console.error('Error fetching transaction frequency analysis:', error);
+/**
+ * Get transaction frequency analysis for a user
+ */
+async getTransactionFrequencyAnalysis(address: string): Promise<any> {
+  try {
+    const response = await fetch(`${this.baseUrl}/api/blockchain/transaction-frequency/${address}`);
+    if (!response.ok) {
       return null;
     }
+    return await response.json();
+  } catch (error) {
+    console.error('Error fetching transaction frequency analysis:', error);
+    return null;
   }
+}
 
-  /**
-   * Get real user behavior score incorporating all analysis
-   */
-  async getUserBehaviorScore(address: string): Promise<any> {
-    try {
-      const response = await fetch(`${this.baseUrl}/api/blockchain/behavior-score/${address}`);
-      if (!response.ok) return null;
-      return await response.json();
-    } catch (error) {
-      console.error('Error fetching user behavior score:', error);
+/**
+ * Get a user behavior score incorporating all analysis
+ */
+async getUserBehaviorScore(address: string): Promise<any> {
+  try {
+    const response = await fetch(`${this.baseUrl}/api/blockchain/behavior-score/${address}`);
+    if (!response.ok) {
       return null;
     }
+    return await response.json();
+  } catch (error) {
+    console.error('Error fetching user behavior score:', error);
+    return null;
   }
-
+}
   /**
    * Subscribe to real-time user behavior updates
    */
@@ -1279,7 +1783,214 @@ class CreditIntelligenceService {
     if (dataPoints >= 10) return 55;
     return 40;
   }
+
+
+  // Real-Time Score Processing Methods
+
+
+  /**
+   * Subscribe to event verification status updates
+   */
+  async subscribeToEventVerification(callback: (verification: any) => void): Promise<() => void> {
+    // Request event verification monitoring
+    if (this.wsConnection && this.wsConnection.readyState === WebSocket.OPEN) {
+      this.wsConnection.send(JSON.stringify({
+        type: 'subscribeEventVerification'
+      }));
+    }
+
+    return this.subscribe('eventVerification', callback);
+  }
+
+  /**
+   * Subscribe to missed event recovery updates
+   */
+  async subscribeToMissedEventRecovery(callback: (recovery: any) => void): Promise<() => void> {
+    // Request missed event recovery monitoring
+    if (this.wsConnection && this.wsConnection.readyState === WebSocket.OPEN) {
+      this.wsConnection.send(JSON.stringify({
+        type: 'subscribeMissedEventRecovery'
+      }));
+    }
+
+    return this.subscribe('missedEventRecovery', callback);
+  }
+
+  /**
+   * Subscribe to score processing statistics
+   */
+  async subscribeToProcessingStats(callback: (stats: any) => void): Promise<() => void> {
+    // Request processing statistics monitoring
+    if (this.wsConnection && this.wsConnection.readyState === WebSocket.OPEN) {
+      this.wsConnection.send(JSON.stringify({
+        type: 'subscribeProcessingStats'
+      }));
+    }
+
+    return this.subscribe('processingStats', callback);
+  }
+
+  /**
+   * Get recent score updates for a user
+   */
+  async getRecentScoreUpdates(userAddress: string, limit: number = 20): Promise<any[]> {
+    try {
+      const response = await fetch(`${this.baseUrl}/api/score-processing/recent-updates/${userAddress}?limit=${limit}`);
+      if (!response.ok) return [];
+      return await response.json();
+    } catch (error) {
+      console.error('Error fetching recent score updates:', error);
+      return [];
+    }
+  }
+
+  /**
+   * Get score processing statistics
+   */
+  async getScoreProcessingStats(): Promise<any> {
+    try {
+      const response = await fetch(`${this.baseUrl}/api/score-processing/stats`);
+      if (!response.ok) return null;
+      return await response.json();
+    } catch (error) {
+      console.error('Error fetching score processing stats:', error);
+      return null;
+    }
+  }
+
+  /**
+   * Get missed event recoveries
+   */
+  async getMissedEventRecoveries(): Promise<any[]> {
+    try {
+      const response = await fetch(`${this.baseUrl}/api/score-processing/missed-event-recoveries`);
+      if (!response.ok) return [];
+      return await response.json();
+    } catch (error) {
+      console.error('Error fetching missed event recoveries:', error);
+      return [];
+    }
+  }
+
+  /**
+   * Get event verification status for a specific event
+   */
+  async getEventVerificationStatus(eventId: string): Promise<any> {
+    try {
+      const response = await fetch(`${this.baseUrl}/api/score-processing/event-verification/${eventId}`);
+      if (!response.ok) return null;
+      return await response.json();
+    } catch (error) {
+      console.error('Error fetching event verification status:', error);
+      return null;
+    }
+  }
+
+  /**
+   * Get score update triggers for a user
+   */
+  async getScoreUpdateTriggers(userAddress: string): Promise<any[]> {
+    try {
+      const response = await fetch(`${this.baseUrl}/api/score-processing/triggers/${userAddress}`);
+      if (!response.ok) return [];
+      return await response.json();
+    } catch (error) {
+      console.error('Error fetching score update triggers:', error);
+      return [];
+    }
+  }
+
+  /**
+   * Add a score update trigger
+   */
+  async addScoreUpdateTrigger(trigger: any): Promise<boolean> {
+    try {
+      const response = await fetch(`${this.baseUrl}/api/score-processing/triggers`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(trigger)
+      });
+      return response.ok;
+    } catch (error) {
+      console.error('Error adding score update trigger:', error);
+      return false;
+    }
+  }
+
+  /**
+   * Remove a score update trigger
+   */
+  async removeScoreUpdateTrigger(triggerId: string): Promise<boolean> {
+    try {
+      const response = await fetch(`${this.baseUrl}/api/score-processing/triggers/${triggerId}`, {
+        method: 'DELETE'
+      });
+      return response.ok;
+    } catch (error) {
+      console.error('Error removing score update trigger:', error);
+      return false;
+    }
+  }
+
+  /**
+   * Get block confirmation status for score updates
+   */
+  async getBlockConfirmationStatus(): Promise<any> {
+    try {
+      const response = await fetch(`${this.baseUrl}/api/score-processing/block-confirmation-status`);
+      if (!response.ok) return null;
+      return await response.json();
+    } catch (error) {
+      console.error('Error fetching block confirmation status:', error);
+      return null;
+    }
+  }
+
+  /**
+   * Trigger manual missed event recovery
+   */
+  async triggerMissedEventRecovery(fromBlock: number, toBlock?: number): Promise<boolean> {
+    try {
+      const response = await fetch(`${this.baseUrl}/api/score-processing/trigger-recovery`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ fromBlock, toBlock })
+      });
+      return response.ok;
+    } catch (error) {
+      console.error('Error triggering missed event recovery:', error);
+      return false;
+    }
+  }
+
+  /**
+   * Get score change history with event details
+   */
+  async getScoreChangeHistory(userAddress: string, timeframe: string = '30d'): Promise<any[]> {
+    try {
+      const response = await fetch(`${this.baseUrl}/api/score-processing/score-history/${userAddress}?timeframe=${timeframe}`);
+      if (!response.ok) return [];
+      return await response.json();
+    } catch (error) {
+      console.error('Error fetching score change history:', error);
+      return [];
+    }
+  }
+
+  /**
+   * Get event-driven score analytics
+   */
+  async getEventDrivenScoreAnalytics(userAddress: string): Promise<any> {
+    try {
+      const response = await fetch(`${this.baseUrl}/api/score-processing/analytics/${userAddress}`);
+      if (!response.ok) return null;
+      return await response.json();
+    } catch (error) {
+      console.error('Error fetching event-driven score analytics:', error);
+      return null;
+    }
+  }
 }
 
+// Export singleton instance
 export const creditIntelligenceService = new CreditIntelligenceService();
-export default creditIntelligenceService;
