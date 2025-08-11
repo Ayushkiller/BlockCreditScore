@@ -306,13 +306,7 @@ GET /health                          # Service health check
 - [ML Training Guide](ML_TRAINING_GUIDE.md) - Machine learning model training
 - [Challenge Requirements](Challenge.md) - Hackathon specifications
 
-## 🏆 Team & Acknowledgments
-
-**CryptoVault Development Team**
-- Blockchain Architecture & Smart Contracts
-- Machine Learning & Data Science
-- Frontend Development & UX Design
-- DevOps & Infrastructure
+ Acknowledgments
 
 **Built for CryptoVate Hackathon**
 - Host: Delhi Technological University (DTU)
