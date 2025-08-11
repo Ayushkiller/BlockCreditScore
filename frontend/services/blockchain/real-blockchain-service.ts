@@ -166,24 +166,8 @@ export class RealBlockchainService {
     } catch (error) {
       console.error(`❌ Failed to calculate credit score for ${address}:`, error);
 
-      // Return a basic score based on address characteristics if API fails
-      const fallbackScore: CreditScore = {
-        address,
-        compositeScore: 480, // Different from the standard 500 to indicate this is real but limited data
-        confidence: 10, // Low confidence due to API failure
-        dimensions: {
-          defiReliability: 480,
-          tradingConsistency: 480,
-          stakingCommitment: 480,
-          governanceParticipation: 480,
-          liquidityProvider: 480
-        },
-        lastUpdated: Date.now(),
-        dataPoints: 0
-      };
-
-      console.log(`⚠️ Returning fallback score for ${address} due to API error`);
-      return fallbackScore;
+      // Task 4.3: Instead of fallback data, throw error to show proper error state
+      throw new Error(`Real blockchain data unavailable for credit score calculation: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   }
 

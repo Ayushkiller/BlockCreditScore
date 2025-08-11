@@ -139,14 +139,14 @@ export default async function handler(
       ? connectedConnections.reduce((sum, c) => sum + c.latency, 0) / connectedConnections.length
       : 0;
     
-    const dataAvailability = connections.length > 0
+    const connectionAvailability = connections.length > 0
       ? (connectedConnections.length / connections.length) * 100
       : 0;
     
     let overallHealth: 'healthy' | 'degraded' | 'critical';
-    if (dataAvailability >= 80) {
+    if (connectionAvailability >= 80) {
       overallHealth = 'healthy';
-    } else if (dataAvailability >= 50) {
+    } else if (connectionAvailability >= 50) {
       overallHealth = 'degraded';
     } else {
       overallHealth = 'critical';
@@ -158,7 +158,7 @@ export default async function handler(
       disconnectedCount: connections.length - connectedConnections.length,
       reconnectingCount: reconnectingConnections.length,
       averageLatency,
-      dataAvailability,
+      dataAvailability: connectionAvailability,
       overallHealth
     };
 

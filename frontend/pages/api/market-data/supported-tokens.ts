@@ -21,12 +21,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     });
   } catch (error) {
     console.error('Error fetching supported tokens:', error);
-    res.status(500).json({ 
-      error: 'Failed to fetch supported tokens',
-      details: error instanceof Error ? error.message : 'Unknown error',
-      tokens: ['ETH', 'BTC', 'USDC', 'USDT', 'DAI', 'LINK', 'UNI', 'AAVE'], // Fallback list
-      count: 8,
-      timestamp: Date.now()
+    // Task 4.3: Remove fallback mock data, return proper error state
+    res.status(503).json({ 
+      error: 'Real supported tokens data unavailable',
+      details: error instanceof Error ? error.message : 'Unable to fetch from blockchain services',
+      tokens: [], // No fallback data - empty array indicates unavailable
+      count: 0,
+      timestamp: Date.now(),
+      dataUnavailable: true
     });
   }
 }

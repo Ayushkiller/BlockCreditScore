@@ -3,237 +3,235 @@ import { NextApiRequest, NextApiResponse } from 'next';
 /**
  * API endpoint for real performance metrics
  * Returns actual API call latency, blockchain query times, transaction processing rates,
- * error rates, and system performance data
+ * error rates, and system performance data from real blockchain services
+ * Task 4.3: Replace all mock data with real blockchain data sources
  */
 
-// Mock performance monitoring service for frontend API
-// In production, this would connect to the actual PerformanceMonitoringService
-class MockPerformanceMonitoringService {
+// Real performance monitoring service that fetches data from actual blockchain services
+class RealPerformanceMonitoringService {
+  private baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
   private startTime = Date.now() - (24 * 60 * 60 * 1000); // 24 hours ago
 
-  getPerformanceSummary() {
+  async getPerformanceSummary() {
     const now = Date.now();
     
-    return {
-      timestamp: now,
-      overallHealth: Math.random() > 0.8 ? 'degraded' : 'healthy' as 'healthy' | 'degraded' | 'unhealthy',
-      services: {
-        'blockchain': {
-          health: Math.random() > 0.9 ? 'degraded' : 'healthy' as 'healthy' | 'degraded' | 'unhealthy',
-          avgLatency: 1200 + Math.random() * 800, // 1200-2000ms
-          throughput: 15 + Math.random() * 10, // 15-25 ops/sec
-          errorRate: Math.random() * 3, // 0-3%
-          availability: 98 + Math.random() * 2, // 98-100%
-          activeAlerts: Math.floor(Math.random() * 3)
-        },
-        'price-feeds': {
-          health: Math.random() > 0.85 ? 'degraded' : 'healthy' as 'healthy' | 'degraded' | 'unhealthy',
-          avgLatency: 800 + Math.random() * 400, // 800-1200ms
-          throughput: 45 + Math.random() * 15, // 45-60 ops/sec
-          errorRate: Math.random() * 2, // 0-2%
-          availability: 99 + Math.random() * 1, // 99-100%
-          activeAlerts: Math.floor(Math.random() * 2)
-        },
-        'market-data': {
-          health: Math.random() > 0.9 ? 'degraded' : 'healthy' as 'healthy' | 'degraded' | 'unhealthy',
-          avgLatency: 1000 + Math.random() * 600, // 1000-1600ms
-          throughput: 25 + Math.random() * 15, // 25-40 ops/sec
-          errorRate: Math.random() * 4, // 0-4%
-          availability: 97 + Math.random() * 3, // 97-100%
-          activeAlerts: Math.floor(Math.random() * 2)
-        },
-        'credit-scoring': {
-          health: Math.random() > 0.95 ? 'degraded' : 'healthy' as 'healthy' | 'degraded' | 'unhealthy',
-          avgLatency: 2500 + Math.random() * 1000, // 2500-3500ms
-          throughput: 12 + Math.random() * 8, // 12-20 ops/sec
-          errorRate: Math.random() * 1.5, // 0-1.5%
-          availability: 99.5 + Math.random() * 0.5, // 99.5-100%
-          activeAlerts: Math.floor(Math.random() * 1)
-        }
-      },
-      activeAlerts: this.generateActiveAlerts(),
-      bottlenecks: this.generateBottlenecks(),
-      recommendations: this.generateRecommendations()
-    };
+    try {
+      // Fetch real performance data from blockchain services
+      const [
+        blockchainHealth,
+        priceFeedHealth,
+        marketDataHealth,
+        creditScoringHealth
+      ] = await Promise.allSettled([
+        this.getBlockchainServiceHealth(),
+        this.getPriceFeedServiceHealth(),
+        this.getMarketDataServiceHealth(),
+        this.getCreditScoringServiceHealth()
+      ]);
+
+      const services = {
+        'blockchain': this.extractServiceData(blockchainHealth, 'blockchain'),
+        'price-feeds': this.extractServiceData(priceFeedHealth, 'price-feeds'),
+        'market-data': this.extractServiceData(marketDataHealth, 'market-data'),
+        'credit-scoring': this.extractServiceData(creditScoringHealth, 'credit-scoring')
+      };
+
+      // Calculate overall health based on real service data
+      const healthyServices = Object.values(services).filter(s => s.health === 'healthy').length;
+      const totalServices = Object.keys(services).length;
+      const overallHealth = healthyServices === totalServices ? 'healthy' : 
+                           healthyServices > totalServices / 2 ? 'degraded' : 'unhealthy';
+
+      return {
+        timestamp: now,
+        overallHealth,
+        services,
+        activeAlerts: await this.getRealActiveAlerts(),
+        bottlenecks: await this.getRealBottlenecks(),
+        recommendations: await this.getRealRecommendations()
+      };
+    } catch (error) {
+      console.error('Failed to fetch real performance data:', error);
+      throw new Error('Real performance data unavailable');
+    }
   }
 
-  getAverageLatency(service: string, operation?: string, timeWindow: number = 5 * 60 * 1000) {
-    const baseLatencies: Record<string, number> = {
-      'blockchain': 1500,
-      'price-feeds': 900,
-      'market-data': 1200,
-      'credit-scoring': 3000
-    };
-    
-    const base = baseLatencies[service] || 1000;
-    return base + Math.random() * (base * 0.3);
-  }
-
-  getThroughputStats(service: string, operation?: string) {
-    const baseThroughput: Record<string, number> = {
-      'blockchain': 20,
-      'price-feeds': 50,
-      'market-data': 35,
-      'credit-scoring': 15
-    };
-    
-    const base = baseThroughput[service] || 25;
-    const current = base + Math.random() * (base * 0.4) - (base * 0.2);
-    
-    return {
-      current,
-      average: base,
-      peak: base * 1.5
-    };
-  }
-
-  getErrorRateStats(service: string, operation?: string) {
-    const baseErrorRate = Math.random() * 3; // 0-3%
-    
-    return {
-      current: baseErrorRate,
-      average: baseErrorRate * 0.8,
-      peak: baseErrorRate * 1.5,
-      errorTypes: {
-        'TIMEOUT': Math.floor(Math.random() * 5),
-        'RATE_LIMIT': Math.floor(Math.random() * 3),
-        'NETWORK_ERROR': Math.floor(Math.random() * 2),
-        'API_ERROR': Math.floor(Math.random() * 4)
+  async getAverageLatency(service: string, operation?: string, timeWindow: number = 5 * 60 * 1000) {
+    try {
+      const response = await fetch(`${this.baseUrl}/api/monitoring/latency/${service}?timeWindow=${timeWindow}&operation=${operation || ''}`);
+      if (!response.ok) {
+        throw new Error(`Failed to fetch latency data: ${response.statusText}`);
       }
-    };
-  }
-
-  private generateActiveAlerts() {
-    const alerts = [];
-    const alertCount = Math.floor(Math.random() * 4);
-    
-    for (let i = 0; i < alertCount; i++) {
-      const services = ['blockchain', 'price-feeds', 'market-data', 'credit-scoring'];
-      const types = ['latency', 'throughput', 'error_rate', 'availability'];
-      const severities = ['low', 'medium', 'high', 'critical'];
-      
-      const service = services[Math.floor(Math.random() * services.length)];
-      const type = types[Math.floor(Math.random() * types.length)];
-      const severity = severities[Math.floor(Math.random() * severities.length)];
-      
-      alerts.push({
-        id: `alert-${i}-${Date.now()}`,
-        timestamp: Date.now() - Math.random() * 30 * 60 * 1000, // Within last 30 minutes
-        severity,
-        type,
-        service,
-        operation: `${service}-operation`,
-        message: `${severity.charAt(0).toUpperCase() + severity.slice(1)} ${type.replace('_', ' ')} detected in ${service}`,
-        currentValue: Math.random() * 100,
-        threshold: Math.random() * 50,
-        metadata: {
-          duration: Math.floor(Math.random() * 1800), // 0-30 minutes
-          affectedUsers: Math.floor(Math.random() * 100)
-        }
-      });
+      const data = await response.json();
+      return data.averageLatency;
+    } catch (error) {
+      console.error(`Failed to get real latency data for ${service}:`, error);
+      throw new Error(`Real latency data unavailable for ${service}`);
     }
-    
-    return alerts;
   }
 
-  private generateBottlenecks() {
-    const bottlenecks = [];
-    const bottleneckCount = Math.floor(Math.random() * 3);
-    
-    for (let i = 0; i < bottleneckCount; i++) {
-      const services = ['blockchain', 'price-feeds', 'market-data', 'credit-scoring'];
-      const types = ['latency', 'throughput', 'error_rate'];
-      
-      const service = services[Math.floor(Math.random() * services.length)];
-      const bottleneckType = types[Math.floor(Math.random() * types.length)];
-      
-      bottlenecks.push({
-        service,
-        operation: `${service}-operation`,
-        bottleneckType,
-        severity: Math.random(),
-        impact: `${bottleneckType.charAt(0).toUpperCase() + bottleneckType.slice(1)} issues affecting ${service} performance`,
-        recommendation: `Optimize ${service} ${bottleneckType.replace('_', ' ')} handling`,
-        affectedOperations: [`${service}-operation-1`, `${service}-operation-2`]
-      });
+  async getThroughputStats(service: string, operation?: string) {
+    try {
+      const response = await fetch(`${this.baseUrl}/api/monitoring/throughput/${service}?operation=${operation || ''}`);
+      if (!response.ok) {
+        throw new Error(`Failed to fetch throughput data: ${response.statusText}`);
+      }
+      const data = await response.json();
+      return {
+        current: data.current,
+        average: data.average,
+        peak: data.peak
+      };
+    } catch (error) {
+      console.error(`Failed to get real throughput data for ${service}:`, error);
+      throw new Error(`Real throughput data unavailable for ${service}`);
     }
-    
-    return bottlenecks.sort((a, b) => b.severity - a.severity);
   }
 
-  private generateRecommendations() {
-    const recommendations = [
-      'Consider scaling blockchain service to handle increased load',
-      'Optimize price feed caching to reduce API calls',
-      'Review error handling in market data service',
-      'Implement circuit breakers for external API calls',
-      'Add more monitoring for credit scoring operations',
-      'Consider implementing request queuing for high-traffic periods'
-    ];
-    
-    return recommendations.slice(0, Math.floor(Math.random() * 4) + 2);
-  }
-
-  getActiveAlerts() {
-    return this.generateActiveAlerts();
-  }
-
-  exportPerformanceData(timeWindow: number = 60 * 60 * 1000) {
-    const now = Date.now();
-    const metrics = [];
-    const throughput = [];
-    const errorRates = [];
-    
-    // Generate sample historical data
-    for (let i = 0; i < 100; i++) {
-      const timestamp = now - Math.random() * timeWindow;
-      const services = ['blockchain', 'price-feeds', 'market-data', 'credit-scoring'];
-      const service = services[Math.floor(Math.random() * services.length)];
-      
-      metrics.push({
-        timestamp,
-        service,
-        operation: `${service}-operation`,
-        duration: Math.random() * 5000,
-        success: Math.random() > 0.05,
-        errorCode: Math.random() > 0.95 ? 'TIMEOUT' : undefined,
-        metadata: {}
-      });
-      
-      throughput.push({
-        timestamp,
-        service,
-        operation: `${service}-operation`,
-        count: Math.floor(Math.random() * 50),
-        timeWindow: 60000,
-        rate: Math.random() * 50
-      });
-      
-      errorRates.push({
-        timestamp,
-        service,
-        operation: `${service}-operation`,
-        totalRequests: Math.floor(Math.random() * 100) + 10,
-        errorCount: Math.floor(Math.random() * 5),
-        errorRate: Math.random() * 10,
-        errorTypes: {
-          'TIMEOUT': Math.floor(Math.random() * 3),
-          'RATE_LIMIT': Math.floor(Math.random() * 2)
-        }
-      });
+  async getErrorRateStats(service: string, operation?: string) {
+    try {
+      const response = await fetch(`${this.baseUrl}/api/monitoring/errors/${service}?operation=${operation || ''}`);
+      if (!response.ok) {
+        throw new Error(`Failed to fetch error rate data: ${response.statusText}`);
+      }
+      const data = await response.json();
+      return {
+        current: data.current,
+        average: data.average,
+        peak: data.peak,
+        errorTypes: data.errorTypes
+      };
+    } catch (error) {
+      console.error(`Failed to get real error rate data for ${service}:`, error);
+      throw new Error(`Real error rate data unavailable for ${service}`);
     }
-    
-    return {
-      metrics: metrics.sort((a, b) => b.timestamp - a.timestamp),
-      throughput: throughput.sort((a, b) => b.timestamp - a.timestamp),
-      errorRates: errorRates.sort((a, b) => b.timestamp - a.timestamp),
-      alerts: this.getActiveAlerts(),
-      summary: this.getPerformanceSummary()
-    };
+  }
+
+  // Real blockchain service health methods
+  private async getBlockchainServiceHealth() {
+    const response = await fetch(`${this.baseUrl}/api/blockchain/health`);
+    if (!response.ok) throw new Error('Blockchain service unavailable');
+    return await response.json();
+  }
+
+  private async getPriceFeedServiceHealth() {
+    const response = await fetch(`${this.baseUrl}/api/price-feeds/health`);
+    if (!response.ok) throw new Error('Price feed service unavailable');
+    return await response.json();
+  }
+
+  private async getMarketDataServiceHealth() {
+    const response = await fetch(`${this.baseUrl}/api/market-data/health`);
+    if (!response.ok) throw new Error('Market data service unavailable');
+    return await response.json();
+  }
+
+  private async getCreditScoringServiceHealth() {
+    const response = await fetch(`${this.baseUrl}/api/credit-scoring/health`);
+    if (!response.ok) throw new Error('Credit scoring service unavailable');
+    return await response.json();
+  }
+
+  private extractServiceData(serviceResult: PromiseSettledResult<any>, serviceName: string) {
+    if (serviceResult.status === 'fulfilled') {
+      const data = serviceResult.value;
+      return {
+        health: data.isHealthy ? 'healthy' : 'unhealthy' as 'healthy' | 'degraded' | 'unhealthy',
+        avgLatency: data.averageLatency || 0,
+        throughput: data.throughput || 0,
+        errorRate: data.errorRate || 0,
+        availability: data.availability || 0,
+        activeAlerts: data.activeAlerts || 0
+      };
+    } else {
+      // Service is unavailable - return error state instead of mock data
+      return {
+        health: 'unhealthy' as 'healthy' | 'degraded' | 'unhealthy',
+        avgLatency: 0,
+        throughput: 0,
+        errorRate: 100,
+        availability: 0,
+        activeAlerts: 1
+      };
+    }
+  }
+
+  private async getRealActiveAlerts() {
+    try {
+      const response = await fetch(`${this.baseUrl}/api/monitoring/alerts`);
+      if (!response.ok) throw new Error('Alerts service unavailable');
+      const data = await response.json();
+      return data.alerts || [];
+    } catch (error) {
+      console.error('Failed to fetch real alerts:', error);
+      return []; // Return empty array instead of mock data
+    }
+  }
+
+  private async getRealBottlenecks() {
+    try {
+      const response = await fetch(`${this.baseUrl}/api/monitoring/bottlenecks`);
+      if (!response.ok) throw new Error('Bottlenecks service unavailable');
+      const data = await response.json();
+      return data.bottlenecks || [];
+    } catch (error) {
+      console.error('Failed to fetch real bottlenecks:', error);
+      return []; // Return empty array instead of mock data
+    }
+  }
+
+  private async getRealRecommendations() {
+    try {
+      const response = await fetch(`${this.baseUrl}/api/monitoring/recommendations`);
+      if (!response.ok) throw new Error('Recommendations service unavailable');
+      const data = await response.json();
+      return data.recommendations || [];
+    } catch (error) {
+      console.error('Failed to fetch real recommendations:', error);
+      return []; // Return empty array instead of mock data
+    }
+  }
+
+  async getActiveAlerts() {
+    return await this.getRealActiveAlerts();
+  }
+
+  async exportPerformanceData(timeWindow: number = 60 * 60 * 1000) {
+    try {
+      // Fetch real historical performance data from blockchain services
+      const [metricsResponse, throughputResponse, errorRatesResponse] = await Promise.allSettled([
+        fetch(`${this.baseUrl}/api/monitoring/historical-metrics?timeWindow=${timeWindow}`),
+        fetch(`${this.baseUrl}/api/monitoring/historical-throughput?timeWindow=${timeWindow}`),
+        fetch(`${this.baseUrl}/api/monitoring/historical-errors?timeWindow=${timeWindow}`)
+      ]);
+
+      const metrics = metricsResponse.status === 'fulfilled' && metricsResponse.value.ok
+        ? await metricsResponse.value.json()
+        : [];
+
+      const throughput = throughputResponse.status === 'fulfilled' && throughputResponse.value.ok
+        ? await throughputResponse.value.json()
+        : [];
+
+      const errorRates = errorRatesResponse.status === 'fulfilled' && errorRatesResponse.value.ok
+        ? await errorRatesResponse.value.json()
+        : [];
+
+      return {
+        metrics: Array.isArray(metrics) ? metrics : [],
+        throughput: Array.isArray(throughput) ? throughput : [],
+        errorRates: Array.isArray(errorRates) ? errorRates : [],
+        alerts: await this.getActiveAlerts(),
+        summary: await this.getPerformanceSummary()
+      };
+    } catch (error) {
+      console.error('Failed to export real performance data:', error);
+      throw new Error('Real performance data export unavailable');
+    }
   }
 }
 
-const performanceService = new MockPerformanceMonitoringService();
+const performanceService = new RealPerformanceMonitoringService();
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
@@ -248,89 +246,176 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         type 
       } = query;
 
-      // Handle different types of performance data requests
+      // Handle different types of performance data requests with real blockchain data
       switch (type) {
         case 'summary':
-          const summary = performanceService.getPerformanceSummary();
-          return res.status(200).json(summary);
+          try {
+            const summary = await performanceService.getPerformanceSummary();
+            return res.status(200).json(summary);
+          } catch (error) {
+            return res.status(503).json({ 
+              error: 'Real performance data unavailable',
+              message: error instanceof Error ? error.message : 'Service unavailable',
+              timestamp: Date.now()
+            });
+          }
 
         case 'latency':
-          const latencyData = {
-            service: service as string,
-            operation: operation as string,
-            averageLatency: performanceService.getAverageLatency(
+          try {
+            const averageLatency = await performanceService.getAverageLatency(
               service as string, 
               operation as string,
               timeWindow ? parseInt(timeWindow as string) : undefined
-            ),
-            timestamp: Date.now()
-          };
-          return res.status(200).json(latencyData);
+            );
+            const latencyData = {
+              service: service as string,
+              operation: operation as string,
+              averageLatency,
+              timestamp: Date.now()
+            };
+            return res.status(200).json(latencyData);
+          } catch (error) {
+            return res.status(503).json({ 
+              error: 'Real latency data unavailable',
+              message: error instanceof Error ? error.message : 'Service unavailable',
+              timestamp: Date.now()
+            });
+          }
 
         case 'throughput':
-          const throughputData = {
-            service: service as string,
-            operation: operation as string,
-            ...performanceService.getThroughputStats(
+          try {
+            const throughputStats = await performanceService.getThroughputStats(
               service as string,
               operation as string
-            ),
-            timestamp: Date.now()
-          };
-          return res.status(200).json(throughputData);
+            );
+            const throughputData = {
+              service: service as string,
+              operation: operation as string,
+              ...throughputStats,
+              timestamp: Date.now()
+            };
+            return res.status(200).json(throughputData);
+          } catch (error) {
+            return res.status(503).json({ 
+              error: 'Real throughput data unavailable',
+              message: error instanceof Error ? error.message : 'Service unavailable',
+              timestamp: Date.now()
+            });
+          }
 
         case 'error-rates':
-          const errorRateData = {
-            service: service as string,
-            operation: operation as string,
-            ...performanceService.getErrorRateStats(
+          try {
+            const errorRateStats = await performanceService.getErrorRateStats(
               service as string,
               operation as string
-            ),
-            timestamp: Date.now()
-          };
-          return res.status(200).json(errorRateData);
+            );
+            const errorRateData = {
+              service: service as string,
+              operation: operation as string,
+              ...errorRateStats,
+              timestamp: Date.now()
+            };
+            return res.status(200).json(errorRateData);
+          } catch (error) {
+            return res.status(503).json({ 
+              error: 'Real error rate data unavailable',
+              message: error instanceof Error ? error.message : 'Service unavailable',
+              timestamp: Date.now()
+            });
+          }
 
         case 'alerts':
-          const alerts = performanceService.getActiveAlerts();
-          return res.status(200).json({ alerts, timestamp: Date.now() });
+          try {
+            const alerts = await performanceService.getActiveAlerts();
+            return res.status(200).json({ alerts, timestamp: Date.now() });
+          } catch (error) {
+            return res.status(503).json({ 
+              error: 'Real alerts data unavailable',
+              message: error instanceof Error ? error.message : 'Service unavailable',
+              timestamp: Date.now()
+            });
+          }
 
         case 'export':
-          const exportedData = performanceService.exportPerformanceData(
-            timeWindow ? parseInt(timeWindow as string) : undefined
-          );
-          return res.status(200).json(exportedData);
+          try {
+            const exportedData = await performanceService.exportPerformanceData(
+              timeWindow ? parseInt(timeWindow as string) : undefined
+            );
+            return res.status(200).json(exportedData);
+          } catch (error) {
+            return res.status(503).json({ 
+              error: 'Real performance data export unavailable',
+              message: error instanceof Error ? error.message : 'Service unavailable',
+              timestamp: Date.now()
+            });
+          }
 
         default:
-          // Return comprehensive performance metrics
-          const comprehensiveData = {
-            summary: performanceService.getPerformanceSummary(),
-            alerts: performanceService.getActiveAlerts(),
-            timestamp: Date.now(),
-            services: {
-              blockchain: {
-                latency: performanceService.getAverageLatency('blockchain'),
-                throughput: performanceService.getThroughputStats('blockchain'),
-                errorRate: performanceService.getErrorRateStats('blockchain')
+          // Return comprehensive performance metrics from real blockchain services
+          try {
+            const [summary, alerts, blockchainLatency, blockchainThroughput, blockchainErrorRate,
+                   priceFeedLatency, priceFeedThroughput, priceFeedErrorRate,
+                   marketDataLatency, marketDataThroughput, marketDataErrorRate,
+                   creditScoringLatency, creditScoringThroughput, creditScoringErrorRate] = await Promise.allSettled([
+              performanceService.getPerformanceSummary(),
+              performanceService.getActiveAlerts(),
+              performanceService.getAverageLatency('blockchain'),
+              performanceService.getThroughputStats('blockchain'),
+              performanceService.getErrorRateStats('blockchain'),
+              performanceService.getAverageLatency('price-feeds'),
+              performanceService.getThroughputStats('price-feeds'),
+              performanceService.getErrorRateStats('price-feeds'),
+              performanceService.getAverageLatency('market-data'),
+              performanceService.getThroughputStats('market-data'),
+              performanceService.getErrorRateStats('market-data'),
+              performanceService.getAverageLatency('credit-scoring'),
+              performanceService.getThroughputStats('credit-scoring'),
+              performanceService.getErrorRateStats('credit-scoring')
+            ]);
+
+            const comprehensiveData = {
+              summary: summary.status === 'fulfilled' ? summary.value : null,
+              alerts: alerts.status === 'fulfilled' ? alerts.value : [],
+              timestamp: Date.now(),
+              services: {
+                blockchain: {
+                  latency: blockchainLatency.status === 'fulfilled' ? blockchainLatency.value : null,
+                  throughput: blockchainThroughput.status === 'fulfilled' ? blockchainThroughput.value : null,
+                  errorRate: blockchainErrorRate.status === 'fulfilled' ? blockchainErrorRate.value : null
+                },
+                'price-feeds': {
+                  latency: priceFeedLatency.status === 'fulfilled' ? priceFeedLatency.value : null,
+                  throughput: priceFeedThroughput.status === 'fulfilled' ? priceFeedThroughput.value : null,
+                  errorRate: priceFeedErrorRate.status === 'fulfilled' ? priceFeedErrorRate.value : null
+                },
+                'market-data': {
+                  latency: marketDataLatency.status === 'fulfilled' ? marketDataLatency.value : null,
+                  throughput: marketDataThroughput.status === 'fulfilled' ? marketDataThroughput.value : null,
+                  errorRate: marketDataErrorRate.status === 'fulfilled' ? marketDataErrorRate.value : null
+                },
+                'credit-scoring': {
+                  latency: creditScoringLatency.status === 'fulfilled' ? creditScoringLatency.value : null,
+                  throughput: creditScoringThroughput.status === 'fulfilled' ? creditScoringThroughput.value : null,
+                  errorRate: creditScoringErrorRate.status === 'fulfilled' ? creditScoringErrorRate.value : null
+                }
               },
-              'price-feeds': {
-                latency: performanceService.getAverageLatency('price-feeds'),
-                throughput: performanceService.getThroughputStats('price-feeds'),
-                errorRate: performanceService.getErrorRateStats('price-feeds')
-              },
-              'market-data': {
-                latency: performanceService.getAverageLatency('market-data'),
-                throughput: performanceService.getThroughputStats('market-data'),
-                errorRate: performanceService.getErrorRateStats('market-data')
-              },
-              'credit-scoring': {
-                latency: performanceService.getAverageLatency('credit-scoring'),
-                throughput: performanceService.getThroughputStats('credit-scoring'),
-                errorRate: performanceService.getErrorRateStats('credit-scoring')
+              dataAvailability: {
+                summary: summary.status === 'fulfilled',
+                alerts: alerts.status === 'fulfilled',
+                blockchain: blockchainLatency.status === 'fulfilled',
+                priceFeeds: priceFeedLatency.status === 'fulfilled',
+                marketData: marketDataLatency.status === 'fulfilled',
+                creditScoring: creditScoringLatency.status === 'fulfilled'
               }
-            }
-          };
-          return res.status(200).json(comprehensiveData);
+            };
+            return res.status(200).json(comprehensiveData);
+          } catch (error) {
+            return res.status(503).json({ 
+              error: 'Real comprehensive performance data unavailable',
+              message: error instanceof Error ? error.message : 'Service unavailable',
+              timestamp: Date.now()
+            });
+          }
       }
     }
 

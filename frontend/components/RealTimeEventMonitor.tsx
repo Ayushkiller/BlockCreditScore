@@ -288,25 +288,31 @@ const RealTimeEventMonitor: React.FC<RealTimeEventMonitorProps> = ({
             <div className="bg-blue-50 p-3 rounded-lg">
               <div className="text-sm font-medium text-gray-600">Current Block</div>
               <div className="text-lg font-bold text-blue-900">
-                {monitoringStatus.currentBlock.toLocaleString()}
+                {typeof monitoringStatus.currentBlock === 'number'
+                  ? monitoringStatus.currentBlock.toLocaleString()
+                  : 'N/A'}
               </div>
             </div>
             <div className="bg-green-50 p-3 rounded-lg">
               <div className="text-sm font-medium text-gray-600">Events/sec</div>
               <div className="text-lg font-bold text-green-900">
-                {monitoringStatus.eventsPerSecond.toFixed(1)}
+                {typeof monitoringStatus.eventsPerSecond === 'number'
+                  ? monitoringStatus.eventsPerSecond.toFixed(1)
+                  : 'N/A'}
               </div>
             </div>
             <div className="bg-purple-50 p-3 rounded-lg">
               <div className="text-sm font-medium text-gray-600">Confirmed</div>
               <div className="text-lg font-bold text-purple-900">
-                {monitoringStatus.eventsConfirmed.toLocaleString()}
+                {typeof monitoringStatus.eventsConfirmed === 'number'
+                  ? monitoringStatus.eventsConfirmed.toLocaleString()
+                  : 'N/A'}
               </div>
             </div>
             <div className="bg-yellow-50 p-3 rounded-lg">
               <div className="text-sm font-medium text-gray-600">Provider</div>
               <div className="text-lg font-bold text-yellow-900">
-                {monitoringStatus.providerName}
+                {monitoringStatus.providerName || 'N/A'}
               </div>
             </div>
           </div>
@@ -459,7 +465,9 @@ const RealTimeEventMonitor: React.FC<RealTimeEventMonitorProps> = ({
             <div className="bg-blue-50 p-4 rounded-lg">
               <div className="text-sm font-medium text-gray-600 mb-1">Current Block</div>
               <div className="text-2xl font-bold text-blue-900">
-                {monitoringStatus.currentBlock.toLocaleString()}
+                {typeof monitoringStatus.currentBlock === 'number'
+                  ? monitoringStatus.currentBlock.toLocaleString()
+                  : 'N/A'}
               </div>
               <div className="text-xs text-blue-700 mt-1">
                 Latest confirmed block
@@ -469,7 +477,9 @@ const RealTimeEventMonitor: React.FC<RealTimeEventMonitorProps> = ({
             <div className="bg-yellow-50 p-4 rounded-lg">
               <div className="text-sm font-medium text-gray-600 mb-1">Pending Events</div>
               <div className="text-2xl font-bold text-yellow-900">
-                {(monitoringStatus.eventsDetected - monitoringStatus.eventsConfirmed)}
+                {typeof monitoringStatus.eventsDetected === 'number' && typeof monitoringStatus.eventsConfirmed === 'number'
+                  ? (monitoringStatus.eventsDetected - monitoringStatus.eventsConfirmed)
+                  : 'N/A'}
               </div>
               <div className="text-xs text-yellow-700 mt-1">
                 Awaiting confirmation
@@ -479,7 +489,9 @@ const RealTimeEventMonitor: React.FC<RealTimeEventMonitorProps> = ({
             <div className="bg-green-50 p-4 rounded-lg">
               <div className="text-sm font-medium text-gray-600 mb-1">Avg Confirmation</div>
               <div className="text-2xl font-bold text-green-900">
-                {`${monitoringStatus.averageConfirmationTime.toFixed(1)}s`}
+                {typeof monitoringStatus.averageConfirmationTime === 'number'
+                  ? `${monitoringStatus.averageConfirmationTime.toFixed(1)}s`
+                  : 'N/A'}
               </div>
               <div className="text-xs text-green-700 mt-1">
                 Average time to confirm

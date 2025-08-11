@@ -280,13 +280,6 @@ app.get('/api/achievements/:address', (req, res) => {
   res.json(mockCreditProfile.achievements);
 });
 
-// Social Credit Routes
-app.get('/api/social-credit/:address', (req, res) => {
-  const { address } = req.params;
-  console.log(`Fetching social credit for address: ${address}`);
-  
-  res.json(mockCreditProfile.socialCredit);
-});
 
 // Blockchain Connection Status Routes
 app.get('/api/blockchain/status', async (req, res) => {
@@ -374,6 +367,10 @@ app.use('/api/protocols', realProtocolIntegration);
 // Real-Time Price Feed Integration Routes
 const priceFeedIntegration = require('./price-feed-integration');
 app.use('/api/price-feeds', priceFeedIntegration);
+
+// ML Model Integration Routes
+const mlModelIntegration = require('./ml-model-integration');
+app.use('/api/ml-models', mlModelIntegration);
 
 // WebSocket status endpoint
 app.get('/api/websocket/status', (req, res) => {

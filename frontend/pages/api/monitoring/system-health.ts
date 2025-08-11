@@ -90,17 +90,11 @@ class SystemHealthMonitor {
     // Get real system metrics where possible
     const systemMetrics = await this.getRealSystemMetrics();
 
-    // Generate performance alerts
-    const performanceAlerts = this.generatePerformanceAlerts(services);
-
-    // Generate bottlenecks
-    const bottlenecks = this.generateBottlenecks(services, systemMetrics);
-
-    // Generate recommendations
-    const recommendations = this.generateRecommendations(services, systemMetrics, bottlenecks);
-
-    // Generate trends
-    const trends = this.generateTrends(services);
+    // Task 4.3: Only generate alerts/bottlenecks/recommendations if real data is available
+    const performanceAlerts = systemMetrics ? this.generatePerformanceAlerts(services) : [];
+    const bottlenecks = systemMetrics ? this.generateBottlenecks(services, systemMetrics) : [];
+    const recommendations = systemMetrics ? this.generateRecommendations(services, systemMetrics, bottlenecks) : [];
+    const trends = systemMetrics ? this.generateTrends(services) : null;
 
     return {
       timestamp: now,
@@ -111,12 +105,13 @@ class SystemHealthMonitor {
       performanceAlerts,
       bottlenecks,
       recommendations,
-      trends
+      trends,
+      dataAvailable: systemMetrics !== null
     };
   }
 
   private async getRealServiceMetrics(uptime: number, now: number) {
-    // Try to get real metrics from services, fallback to basic health checks
+    // Task 4.3: Get real metrics from blockchain services, no fallback to mock data
     const services: any = {};
     
     const serviceEndpoints = [
@@ -180,14 +175,9 @@ class SystemHealthMonitor {
         activeConnections: Math.floor(memUsage.external / 1024) // Rough estimate
       };
     } catch (error) {
-      // Fallback to reasonable defaults if real metrics unavailable
-      return {
-        cpuUsage: 35,
-        memoryUsage: 60,
-        diskUsage: 45,
-        networkLatency: 15,
-        activeConnections: 120
-      };
+      // Task 4.3: Instead of fallback mock data, return null to indicate unavailable
+      console.error('Real system metrics unavailable:', error);
+      return null;
     }
   }
 

@@ -56,8 +56,11 @@
   },
   "dependencies": {
     "@openzeppelin/contracts": "^5.4.0",
+    "@tensorflow/tfjs": "^4.22.0",
     "@types/ws": "^8.18.1",
+    "cors": "^2.8.5",
     "ethers": "^6.15.0",
+    "express": "^5.1.0",
     "viem": "^1.0.0",
     "wagmi": "^1.0.0",
     "ws": "^8.18.3"

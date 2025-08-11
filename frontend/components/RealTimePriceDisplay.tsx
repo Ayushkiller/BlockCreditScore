@@ -25,18 +25,27 @@ interface RealTimePriceData {
 }
 
 interface RealTimePriceDisplayProps {
-  symbols: string[];
-  privacyMode: boolean;
+  symbol?: string; // <-- allow single symbol
+  symbols?: string[]; // <-- allow array of symbols
+  privacyMode?: boolean;
   showVolatility?: boolean;
   refreshInterval?: number;
 }
 
 const RealTimePriceDisplay: React.FC<RealTimePriceDisplayProps> = ({
+  symbol,
   symbols,
-  privacyMode,
+  privacyMode = false,
   showVolatility = true,
   refreshInterval = 30000 // 30 seconds
 }) => {
+  // Always work with an array of symbols
+  const symbolList = symbols
+    ? symbols
+    : symbol
+      ? [symbol]
+      : [];
+
   const [prices, setPrices] = useState<Map<string, RealTimePriceData>>(new Map());
   const [loading, setLoading] = useState(false);
   const [lastUpdate, setLastUpdate] = useState<number>(0);
@@ -55,7 +64,7 @@ const RealTimePriceDisplay: React.FC<RealTimePriceDisplayProps> = ({
         // Get initial Chainlink prices for all symbols
         const priceMap = new Map();
         
-        for (const symbol of symbols) {
+        for (const symbol of symbolList) {
           try {
             // Try Chainlink first, fallback to DEX if needed
             let priceData;
@@ -84,7 +93,7 @@ const RealTimePriceDisplay: React.FC<RealTimePriceDisplayProps> = ({
         // Set up real-time Chainlink subscriptions for each symbol
         const newSubscriptions = new Map();
         
-        for (const symbol of symbols) {
+        for (const symbol of symbolList) {
           try {
             const unsubscribe = await creditIntelligenceService.subscribeToChainlinkPriceUpdates(
               symbol,
@@ -120,7 +129,7 @@ const RealTimePriceDisplay: React.FC<RealTimePriceDisplayProps> = ({
       }
     };
 
-    if (symbols.length > 0) {
+    if (symbolList.length > 0) {
       initializePriceMonitoring();
     }
 
@@ -134,7 +143,7 @@ const RealTimePriceDisplay: React.FC<RealTimePriceDisplayProps> = ({
         }
       });
     };
-  }, [symbols]);
+  }, [symbolList]);
 
   // Periodic refresh fallback
   useEffect(() => {
@@ -147,7 +156,7 @@ const RealTimePriceDisplay: React.FC<RealTimePriceDisplayProps> = ({
         // Refresh Chainlink prices for all symbols
         const priceMap = new Map();
         
-        for (const symbol of symbols) {
+        for (const symbol of symbolList) {
           try {
             // Try Chainlink first, fallback to DEX
             let priceData;
@@ -175,7 +184,7 @@ const RealTimePriceDisplay: React.FC<RealTimePriceDisplayProps> = ({
     }, refreshInterval);
 
     return () => clearInterval(interval);
-  }, [symbols, refreshInterval]);
+  }, [symbolList, refreshInterval]);
 
   const formatPrice = (price: number): string => {
     if (privacyMode) return '***';
