@@ -34,7 +34,7 @@ export class RealBlockchainService {
 
   constructor() {
     this.etherscanApiKey = process.env.ETHERSCAN_API_KEY || '';
-    
+
     // Initialize providers
     if (process.env.GOERLI_RPC_URL) {
       this.providers.set('goerli', new ethers.JsonRpcProvider(process.env.GOERLI_RPC_URL));
@@ -45,7 +45,7 @@ export class RealBlockchainService {
     if (process.env.MAINNET_RPC_URL) {
       this.providers.set('mainnet', new ethers.JsonRpcProvider(process.env.MAINNET_RPC_URL));
     }
-    
+
     console.log('🔧 RealBlockchainService initialized with:');
     console.log(`   - Etherscan API Key: ${this.etherscanApiKey ? 'SET' : 'MISSING'}`);
     console.log(`   - Mainnet RPC: ${process.env.MAINNET_RPC_URL ? 'SET' : 'MISSING'}`);
@@ -57,19 +57,19 @@ export class RealBlockchainService {
     try {
       console.log(`🔍 Fetching REAL transactions for ${address} on ${network}`);
       console.log(`🔧 Using Etherscan API key: ${this.etherscanApiKey ? 'SET' : 'MISSING'}`);
-      
+
       // Use Etherscan API for transaction history
       const baseUrl = this.getEtherscanUrl(network);
       const url = `${baseUrl}/api?module=account&action=txlist&address=${address}&startblock=0&endblock=99999999&sort=desc&apikey=${this.etherscanApiKey}`;
-      
+
       console.log(`🌐 Making request to: ${baseUrl}/api?module=account&action=txlist&address=${address}&startblock=0&endblock=99999999&sort=desc&apikey=${this.etherscanApiKey ? '[REDACTED]' : 'MISSING'}`);
-      
+
       const response = await fetch(url);
       const data = await response.json();
-      
+
       console.log(`📡 Etherscan response status: ${data.status}, message: ${data.message}`);
       console.log(`📊 Raw result count: ${data.result ? data.result.length : 'N/A'}`);
-      
+
       if (data.status !== '1') {
         console.error(`❌ Etherscan API error: ${data.message}`);
         throw new Error(`Etherscan API error: ${data.message}`);
@@ -94,7 +94,7 @@ export class RealBlockchainService {
 
       console.log(`✅ Found ${transactions.length} real transactions for ${address}`);
       console.log(`📋 Sample transaction hashes: ${transactions.slice(0, 3).map(tx => tx.hash).join(', ')}`);
-      
+
       return transactions;
 
     } catch (error) {
@@ -111,31 +111,31 @@ export class RealBlockchainService {
   async calculateRealCreditScore(address: string): Promise<CreditScore> {
     try {
       console.log(`🧮 Calculating REAL credit score for ${address}`);
-      
+
       const transactions = await this.getWalletTransactions(address);
-      
+
       console.log(`📊 Analyzing ${transactions.length} transactions for ${address}`);
-      
+
       // Analyze real transaction patterns
       const defiReliability = this.analyzeDeFiReliability(transactions);
       const tradingConsistency = this.analyzeTradingConsistency(transactions);
       const stakingCommitment = this.analyzeStakingCommitment(transactions);
       const governanceParticipation = this.analyzeGovernanceParticipation(transactions);
       const liquidityProvider = this.analyzeLiquidityProvider(transactions);
-      
+
       // Add general activity analysis to make scores more varied
       const activityBonus = this.analyzeGeneralActivity(transactions);
-      
+
       // Apply activity bonus to make scores more varied based on actual usage
       const adjustedDefiReliability = Math.min(1000, defiReliability + (activityBonus * 0.3));
       const adjustedTradingConsistency = Math.min(1000, tradingConsistency + (activityBonus * 0.2));
-      
+
       const compositeScore = Math.round(
         (adjustedDefiReliability + adjustedTradingConsistency + stakingCommitment + governanceParticipation + liquidityProvider) / 5
       );
-      
+
       const confidence = Math.min(100, Math.max(20, transactions.length * 2));
-      
+
       const creditScore: CreditScore = {
         address,
         compositeScore,
@@ -160,12 +160,12 @@ export class RealBlockchainService {
       console.log(`   - Liquidity Provider: ${liquidityProvider}`);
       console.log(`   - Confidence: ${confidence}%`);
       console.log(`   - Data Points: ${transactions.length}`);
-      
+
       return creditScore;
 
     } catch (error) {
       console.error(`❌ Failed to calculate credit score for ${address}:`, error);
-      
+
       // Return a basic score based on address characteristics if API fails
       const fallbackScore: CreditScore = {
         address,
@@ -181,7 +181,7 @@ export class RealBlockchainService {
         lastUpdated: Date.now(),
         dataPoints: 0
       };
-      
+
       console.log(`⚠️ Returning fallback score for ${address} due to API error`);
       return fallbackScore;
     }
@@ -189,103 +189,136 @@ export class RealBlockchainService {
 
   private analyzeDeFiReliability(transactions: Transaction[]): number {
     // Analyze DeFi protocol interactions
-    const defiTxs = transactions.filter(tx => 
+    const defiTxs = transactions.filter(tx =>
       this.isDeFiTransaction(tx.to) || this.isDeFiMethodId(tx.methodId)
     );
-    
+
     console.log(`   📊 DeFi Analysis: Found ${defiTxs.length} DeFi transactions out of ${transactions.length} total`);
-    
+
     // Log some sample transactions for debugging
     if (transactions.length > 0) {
       console.log(`   🔍 Sample transactions:`);
       transactions.slice(0, 3).forEach((tx, i) => {
-        console.log(`     ${i+1}. To: ${tx.to}, Method: ${tx.methodId}, Value: ${tx.value}`);
+        console.log(`     ${i + 1}. To: ${tx.to}, Method: ${tx.methodId}, Value: ${tx.value}`);
       });
     }
-    
-    // More flexible scoring - give points for any transaction activity
-    let score = 400; // Base score
-    
+
+    // Start with very low score for no activity
+    let score = 100; // Very low base score
+
     if (defiTxs.length > 0) {
-      score = Math.min(1000, 400 + (defiTxs.length * 10));
-    } else {
-      // Even if no specific DeFi detected, give some credit for transaction activity
+      // Strong DeFi activity gets high scores
+      score = Math.min(1000, 600 + (defiTxs.length * 15));
+    } else if (transactions.length > 0) {
+      // Some activity but no DeFi - give modest credit
       const totalValue = transactions.reduce((sum, tx) => sum + parseFloat(tx.value || '0'), 0);
       const hasSignificantActivity = totalValue > 1000000000000000000; // > 1 ETH total
-      
+
       if (hasSignificantActivity) {
-        score = 520; // Slightly above neutral for active wallets
-      } else if (transactions.length > 10) {
-        score = 510; // Slightly above neutral for active wallets
+        score = 350; // Moderate score for high-value activity
+      } else if (transactions.length > 20) {
+        score = 280; // Some credit for frequent transactions
+      } else if (transactions.length > 5) {
+        score = 200; // Minimal credit for some activity
+      } else {
+        score = 150; // Very low for minimal activity
       }
     }
-    
+    // If no transactions at all, score stays at 100
+
     console.log(`   📊 DeFi Score: ${score} (based on ${defiTxs.length} DeFi txs, ${transactions.length} total txs)`);
     return Math.round(score);
   }
 
   private analyzeTradingConsistency(transactions: Transaction[]): number {
     // Analyze trading patterns and frequency
-    const tradingTxs = transactions.filter(tx => 
+    const tradingTxs = transactions.filter(tx =>
       this.isTradingTransaction(tx.to) || this.isTradingMethodId(tx.methodId)
     );
-    
+
     console.log(`   📊 Trading Analysis: Found ${tradingTxs.length} trading transactions`);
-    
-    // More flexible scoring based on transaction patterns
-    let score = 500; // Base score
-    
+
+    // Start with very low score for no activity
+    let score = 80; // Very low base score
+
     if (tradingTxs.length > 0) {
-      score = Math.min(1000, 300 + (tradingTxs.length * 8));
-    } else {
-      // Look for patterns that suggest trading activity
+      // Actual trading activity gets good scores
+      score = Math.min(1000, 500 + (tradingTxs.length * 12));
+    } else if (transactions.length > 0) {
+      // Look for patterns that suggest trading-like activity
       const frequentTxs = transactions.filter(tx => parseFloat(tx.value || '0') > 0);
       const uniqueAddresses = new Set(transactions.map(tx => tx.to)).size;
-      
-      if (frequentTxs.length > 20 && uniqueAddresses > 5) {
-        score = 530; // Active wallet with diverse interactions
-      } else if (frequentTxs.length > 10) {
-        score = 515; // Moderately active wallet
+
+      if (frequentTxs.length > 30 && uniqueAddresses > 10) {
+        score = 400; // High activity suggests trading behavior
+      } else if (frequentTxs.length > 15 && uniqueAddresses > 5) {
+        score = 300; // Moderate activity
+      } else if (frequentTxs.length > 5) {
+        score = 200; // Some activity
+      } else {
+        score = 120; // Minimal activity
       }
     }
-    
+    // If no transactions at all, score stays at 80
+
     console.log(`   📊 Trading Score: ${score} (based on ${tradingTxs.length} trading txs)`);
     return Math.round(score);
   }
 
   private analyzeStakingCommitment(transactions: Transaction[]): number {
     // Analyze staking behavior
-    const stakingTxs = transactions.filter(tx => 
+    const stakingTxs = transactions.filter(tx =>
       this.isStakingTransaction(tx.to) || this.isStakingMethodId(tx.methodId)
     );
-    
-    if (stakingTxs.length === 0) return 500;
-    
-    const score = Math.min(1000, 600 + (stakingTxs.length * 15));
+
+    let score = 90; // Very low base score for no staking
+
+    if (stakingTxs.length > 0) {
+      // Actual staking gets high scores
+      score = Math.min(1000, 700 + (stakingTxs.length * 20));
+    } else if (transactions.length > 10) {
+      // Some general activity gets minimal credit
+      score = 150;
+    }
+
     return Math.round(score);
   }
 
   private analyzeGovernanceParticipation(transactions: Transaction[]): number {
     // Analyze governance participation
-    const govTxs = transactions.filter(tx => 
+    const govTxs = transactions.filter(tx =>
       this.isGovernanceTransaction(tx.to) || this.isGovernanceMethodId(tx.methodId)
     );
-    
-    if (govTxs.length === 0) return 400;
-    
-    const score = Math.min(1000, 700 + (govTxs.length * 20));
+
+    let score = 50; // Very low base score for no governance
+
+    if (govTxs.length > 0) {
+      // Governance participation gets very high scores
+      score = Math.min(1000, 800 + (govTxs.length * 25));
+    } else if (transactions.length > 20) {
+      // Active wallets get minimal governance credit
+      score = 120;
+    }
+
     return Math.round(score);
   }
 
   private analyzeLiquidityProvider(transactions: Transaction[]): number {
     // Analyze liquidity provision
-    const lpTxs = transactions.filter(tx => 
+    const lpTxs = transactions.filter(tx =>
       this.isLiquidityTransaction(tx.to) || this.isLiquidityMethodId(tx.methodId)
     );
-    
-    if (lpTxs.length === 0) return 500;
-    
-    const score = Math.min(1000, 500 + (lpTxs.length * 12));
+
+    let score = 70; // Very low base score for no LP activity
+
+    if (lpTxs.length > 0) {
+      // LP activity gets good scores
+      score = Math.min(1000, 600 + (lpTxs.length * 18));
+    } else if (transactions.length > 15) {
+      // Active wallets get minimal LP credit
+      score = 140;
+    }
+
     return Math.round(score);
   }
 
@@ -388,26 +421,26 @@ export class RealBlockchainService {
     const totalValue = transactions.reduce((sum, tx) => sum + parseFloat(tx.value || '0'), 0);
     const uniqueAddresses = new Set(transactions.map(tx => tx.to)).size;
     const avgGasPrice = transactions.reduce((sum, tx) => sum + parseFloat(tx.gasPrice || '0'), 0) / transactions.length;
-    
+
     // Calculate activity score based on various factors
     let activityScore = 0;
-    
+
     // Volume-based scoring
     if (totalValue > 10000000000000000000) activityScore += 50; // > 10 ETH
     else if (totalValue > 1000000000000000000) activityScore += 30; // > 1 ETH
     else if (totalValue > 100000000000000000) activityScore += 15; // > 0.1 ETH
-    
+
     // Diversity-based scoring
     if (uniqueAddresses > 20) activityScore += 30;
     else if (uniqueAddresses > 10) activityScore += 20;
     else if (uniqueAddresses > 5) activityScore += 10;
-    
+
     // Frequency-based scoring
     if (transactions.length > 50) activityScore += 20;
     else if (transactions.length > 20) activityScore += 15;
     else if (transactions.length > 10) activityScore += 10;
-    
-    console.log(`   📊 Activity Analysis: Volume=${totalValue/1e18} ETH, Unique=${uniqueAddresses}, Bonus=${activityScore}`);
+
+    console.log(`   📊 Activity Analysis: Volume=${totalValue / 1e18} ETH, Unique=${uniqueAddresses}, Bonus=${activityScore}`);
     return activityScore;
   }
 

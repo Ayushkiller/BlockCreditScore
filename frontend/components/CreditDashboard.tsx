@@ -522,11 +522,11 @@ const RealUserBehaviorAnalysis: React.FC<{
       )}
 
       {/* Blockchain Verification Status */}
-      <BlockchainVerificationStatus 
-        address={userAddress} 
+      <BlockchainVerificationStatus
+        address={userAddress}
         onVerificationChange={(status) => {
           // Handle verification status changes
-          console.log('Verification status updated:', status);
+          console.log("Verification status updated:", status);
         }}
       />
 
@@ -1581,9 +1581,14 @@ const CreditDashboard: React.FC = () => {
   } = useCreditIntelligence();
 
   // Address input for demo mode
-  const [directAddress, setDirectAddress] = useState('');
+  const [directAddress, setDirectAddress] = useState("");
   const [showAddressInput, setShowAddressInput] = useState(false);
-  const [currentAnalysisAddress, setCurrentAnalysisAddress] = useState<string | null>(null);
+  const [currentAnalysisAddress, setCurrentAnalysisAddress] = useState<
+    string | null
+  >(null);
+
+  // Use connected address or direct analysis address
+  const activeAddress = connectedAddress || currentAnalysisAddress;
 
   // Real-time blockchain event monitoring state
   const [recentEvents, setRecentEvents] = useState<BlockchainEvent[]>([]);
@@ -1836,24 +1841,21 @@ const CreditDashboard: React.FC = () => {
   // Handle direct address analysis
   const handleAnalyzeAddress = async () => {
     if (!directAddress.trim()) return;
-    
+
     // Basic Ethereum address validation
     if (!/^0x[a-fA-F0-9]{40}$/.test(directAddress.trim())) {
-      alert('Please enter a valid Ethereum address');
+      alert("Please enter a valid Ethereum address");
       return;
     }
-    
+
     const address = directAddress.trim();
     setCurrentAnalysisAddress(address);
     setShowAddressInput(false);
-    setDirectAddress('');
-    
+    setDirectAddress("");
+
     // Load profile data for the address
     await analyzeAddress(address);
   };
-
-  // Use connected address or direct analysis address
-  const activeAddress = connectedAddress || currentAnalysisAddress;
 
   if (!activeAddress) {
     return (
@@ -1865,7 +1867,7 @@ const CreditDashboard: React.FC = () => {
         <p className="text-gray-600 mb-6">
           Analyze any Ethereum address for credit scoring and DeFi behavior
         </p>
-        
+
         {!showAddressInput ? (
           <div className="space-y-4">
             <button
@@ -1898,7 +1900,7 @@ const CreditDashboard: React.FC = () => {
               <button
                 onClick={() => {
                   setShowAddressInput(false);
-                  setDirectAddress('');
+                  setDirectAddress("");
                 }}
                 className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
               >
@@ -2252,7 +2254,7 @@ const CreditDashboard: React.FC = () => {
         userAddress={activeAddress}
         privacyMode={privacyMode}
         onScoreUpdate={(update) => {
-          console.log('Score update received in dashboard:', update);
+          console.log("Score update received in dashboard:", update);
           // Optionally refresh the profile data when scores are updated
           // This could trigger a re-fetch of the credit profile
         }}
