@@ -25,9 +25,7 @@ import StatusOverview from '../components/StatusOverview';
 import CreditDashboard from '../components/CreditDashboard';
 import AnalyticsPanel from '../components/AnalyticsPanel';
 import SocialCreditPanel from '../components/SocialCreditPanel';
-import PrivacyPanel from '../components/PrivacyPanel';
 import WalletConnection from '../components/WalletConnection';
-import SimpleCreditDemo from '../components/SimpleCreditDemo';
 import ContractTestPanel from '../components/ContractTestPanel';
 import { useDeployment } from '../contexts/DeploymentContext';
 import { useCreditIntelligence } from '../contexts/CreditIntelligenceContext';
@@ -38,14 +36,12 @@ export default function Home() {
   const { connectedAddress } = useCreditIntelligence();
 
   const tabs = [
-    { id: 'demo', label: 'Credit Analysis Demo', icon: Award },
     { id: 'contract-test', label: 'Contract Test', icon: CheckCircle },
     { id: 'deploy', label: 'Deploy Contracts', icon: Rocket },
     { id: 'overview', label: 'Overview', icon: Activity },
     { id: 'dashboard', label: 'Credit Dashboard', icon: Shield },
     { id: 'analytics', label: 'Analytics', icon: BarChart3 },
     { id: 'social', label: 'Social & Gamification', icon: Users },
-    { id: 'privacy', label: 'Privacy & ZK Proofs', icon: Lock },
     { id: 'config', label: 'Environment Config', icon: Settings },
     { id: 'monitor', label: 'Monitoring', icon: Monitor },
     { id: 'logs', label: 'Logs', icon: FileText },
@@ -53,8 +49,6 @@ export default function Home() {
 
   const getTabContent = () => {
     switch (activeTab) {
-      case 'demo':
-        return <SimpleCreditDemo />;
       case 'contract-test':
         return <ContractTestPanel />;
       case 'overview':
@@ -65,8 +59,6 @@ export default function Home() {
         return <AnalyticsPanel />;
       case 'social':
         return <SocialCreditPanel />;
-      case 'privacy':
-        return <PrivacyPanel />;
       case 'config':
         return <EnvConfigPanel />;
       case 'deploy':
@@ -76,7 +68,7 @@ export default function Home() {
       case 'logs':
         return <LogsPanel />;
       default:
-        return <SimpleCreditDemo />;
+        return <CreditDashboard />;
     }
   };
 

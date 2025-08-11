@@ -77,7 +77,7 @@ interface PriceCacheMetrics {
 }
 
 // Real Protocol Analytics Component with Enhanced Transaction Analysis
-const RealProtocolAnalytics: React.FC<{ timeframe: string; privacyMode: boolean; connectedAddress: string | null }> = ({ timeframe, privacyMode, connectedAddress }) => {
+const RealProtocolAnalytics: React.FC<{ timeframe: string; connectedAddress: string | null }> = ({ timeframe, connectedAddress }) => {
   const [protocolStats, setProtocolStats] = useState<any>(null);
   const [protocolInteractions, setProtocolInteractions] = useState<any[]>([]);
   const [tvlData, setTvlData] = useState<any>(null);
@@ -161,28 +161,28 @@ const RealProtocolAnalytics: React.FC<{ timeframe: string; privacyMode: boolean;
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
             <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
               <div className="text-2xl font-bold text-blue-900">
-                {privacyMode ? '***' : transactionAnalytics.realTransactionMetrics?.totalTransactions || 0}
+                {transactionAnalytics.realTransactionMetrics?.totalTransactions || 0}
               </div>
               <div className="text-sm text-blue-700">Total Transactions</div>
             </div>
             
             <div className="bg-green-50 border border-green-200 rounded-lg p-4">
               <div className="text-2xl font-bold text-green-900">
-                {privacyMode ? '***' : transactionAnalytics.realProtocolInteractions?.uniqueProtocols || 0}
+                {transactionAnalytics.realProtocolInteractions?.uniqueProtocols || 0}
               </div>
               <div className="text-sm text-green-700">Protocols Used</div>
             </div>
             
             <div className="bg-purple-50 border border-purple-200 rounded-lg p-4">
               <div className="text-2xl font-bold text-purple-900">
-                {privacyMode ? '***' : `${(transactionAnalytics.gasAnalysis?.avgEfficiency * 100 || 0).toFixed(0)}%`}
+                {`${(transactionAnalytics.gasAnalysis?.avgEfficiency * 100 || 0).toFixed(0)}%`}
               </div>
               <div className="text-sm text-purple-700">Gas Efficiency</div>
             </div>
             
             <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
               <div className="text-2xl font-bold text-yellow-900">
-                {privacyMode ? '***' : transactionAnalytics.realEventHistory?.length || 0}
+                {transactionAnalytics.realEventHistory?.length || 0}
               </div>
               <div className="text-sm text-yellow-700">DeFi Events</div>
             </div>
@@ -198,7 +198,7 @@ const RealProtocolAnalytics: React.FC<{ timeframe: string; privacyMode: boolean;
                     <div className="flex items-center justify-between mb-2">
                       <h5 className="font-medium text-gray-900 capitalize">{protocol}</h5>
                       <div className="text-sm text-gray-500">
-                        {privacyMode ? '***' : `${data.interactions} txs`}
+                        {`${data.interactions} txs`}
                       </div>
                     </div>
                     
@@ -210,7 +210,7 @@ const RealProtocolAnalytics: React.FC<{ timeframe: string; privacyMode: boolean;
                       <div className="flex justify-between">
                         <span className="text-gray-600">Avg Gas Used:</span>
                         <span className="font-medium">
-                          {privacyMode ? '***' : `${(data.avgGasUsed || 0).toLocaleString()}`}
+                          {`${(data.avgGasUsed || 0).toLocaleString()}`}
                         </span>
                       </div>
                       <div className="flex justify-between">
@@ -219,7 +219,7 @@ const RealProtocolAnalytics: React.FC<{ timeframe: string; privacyMode: boolean;
                           data.successRate > 0.95 ? 'text-green-600' :
                           data.successRate > 0.9 ? 'text-yellow-600' : 'text-red-600'
                         }`}>
-                          {privacyMode ? '***' : `${((data.successRate || 0) * 100).toFixed(1)}%`}
+                          {`${((data.successRate || 0) * 100).toFixed(1)}%`}
                         </span>
                       </div>
                     </div>
@@ -236,7 +236,7 @@ const RealProtocolAnalytics: React.FC<{ timeframe: string; privacyMode: boolean;
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div className="bg-gray-50 rounded-lg p-4">
                   <div className="text-lg font-semibold text-gray-900">
-                    {privacyMode ? '***' : `${(gasAnalytics.avgGasPrice / 1e9).toFixed(1)} gwei`}
+                    {`${(gasAnalytics.avgGasPrice / 1e9).toFixed(1)} gwei`}
                   </div>
                   <div className="text-sm text-gray-600">Average Gas Price</div>
                   <div className="text-xs text-gray-500 mt-1">
@@ -246,7 +246,7 @@ const RealProtocolAnalytics: React.FC<{ timeframe: string; privacyMode: boolean;
                 
                 <div className="bg-gray-50 rounded-lg p-4">
                   <div className="text-lg font-semibold text-gray-900">
-                    {privacyMode ? '***' : `${gasAnalytics.gasOptimizationScore}/100`}
+                    {`${gasAnalytics.gasOptimizationScore}/100`}
                   </div>
                   <div className="text-sm text-gray-600">Optimization Score</div>
                   <div className={`text-xs mt-1 ${
@@ -294,11 +294,11 @@ const RealProtocolAnalytics: React.FC<{ timeframe: string; privacyMode: boolean;
                       <div className="w-24 bg-gray-200 rounded-full h-2">
                         <div 
                           className="bg-indigo-500 h-2 rounded-full"
-                          style={{ width: privacyMode ? '0%' : `${Math.min(100, (frequency / protocolUsagePatterns.maxFrequency) * 100)}%` }}
+                          style={{ width: `${Math.min(100, (frequency / protocolUsagePatterns.maxFrequency) * 100)}%` }}
                         ></div>
                       </div>
                       <span className="text-sm text-gray-600 w-12 text-right">
-                        {privacyMode ? '***' : frequency}
+                        {frequency}
                       </span>
                     </div>
                   </div>
@@ -312,25 +312,25 @@ const RealProtocolAnalytics: React.FC<{ timeframe: string; privacyMode: boolean;
                 <div className="flex justify-between">
                   <span className="text-gray-600">Most Active Day:</span>
                   <span className="font-medium">
-                    {privacyMode ? '***' : protocolUsagePatterns.mostActiveDay || 'N/A'}
+                    {protocolUsagePatterns.mostActiveDay || 'N/A'}
                   </span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-gray-600">Most Active Hour:</span>
                   <span className="font-medium">
-                    {privacyMode ? '***' : `${protocolUsagePatterns.mostActiveHour || 'N/A'}:00`}
+                    {`${protocolUsagePatterns.mostActiveHour || 'N/A'}:00`}
                   </span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-gray-600">Avg Txs per Day:</span>
                   <span className="font-medium">
-                    {privacyMode ? '***' : (protocolUsagePatterns.avgTransactionsPerDay || 0).toFixed(1)}
+                    {(protocolUsagePatterns.avgTransactionsPerDay || 0).toFixed(1)}
                   </span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-gray-600">Activity Streak:</span>
                   <span className="font-medium">
-                    {privacyMode ? '***' : `${protocolUsagePatterns.longestActiveStreak || 0} days`}
+                    {`${protocolUsagePatterns.longestActiveStreak || 0} days`}
                   </span>
                 </div>
               </div>
@@ -368,7 +368,7 @@ const RealProtocolAnalytics: React.FC<{ timeframe: string; privacyMode: boolean;
                     <div className="text-right">
                       <div className="font-medium flex items-center">
                         <DollarSign className="w-4 h-4 text-purple-600 mr-1" />
-                        {privacyMode ? '***' : `${(Number(data.totalValueLocked) / 1e18).toFixed(2)}M`}
+                        {`${(Number(data.totalValueLocked) / 1e18).toFixed(2)}M`}
                       </div>
                     </div>
                   </div>
@@ -378,7 +378,7 @@ const RealProtocolAnalytics: React.FC<{ timeframe: string; privacyMode: boolean;
                     <div className="text-right">
                       <div className="font-medium flex items-center">
                         <DollarSign className="w-4 h-4 text-green-600 mr-1" />
-                        {privacyMode ? '***' : `${(Number(data.totalSupply) / 1e18).toFixed(2)}M`}
+                        {`${(Number(data.totalSupply) / 1e18).toFixed(2)}M`}
                       </div>
                     </div>
                   </div>
@@ -388,7 +388,7 @@ const RealProtocolAnalytics: React.FC<{ timeframe: string; privacyMode: boolean;
                     <div className="text-right">
                       <div className="font-medium flex items-center">
                         <DollarSign className="w-4 h-4 text-red-600 mr-1" />
-                        {privacyMode ? '***' : `${(Number(data.totalBorrow) / 1e18).toFixed(2)}M`}
+                        {`${(Number(data.totalBorrow) / 1e18).toFixed(2)}M`}
                       </div>
                     </div>
                   </div>
@@ -398,7 +398,7 @@ const RealProtocolAnalytics: React.FC<{ timeframe: string; privacyMode: boolean;
                     <div className="text-right">
                       <div className="font-medium flex items-center">
                         <Percent className="w-4 h-4 text-blue-600 mr-1" />
-                        {privacyMode ? '***' : `${(data.utilizationRate || 0).toFixed(1)}%`}
+                        {`${(data.utilizationRate || 0).toFixed(1)}%`}
                       </div>
                     </div>
                   </div>
@@ -446,21 +446,21 @@ const RealProtocolAnalytics: React.FC<{ timeframe: string; privacyMode: boolean;
                         <div className="flex justify-between">
                           <span className="text-gray-600">Supply APY:</span>
                           <span className="font-medium text-green-600">
-                            {privacyMode ? '***' : `${yieldInfo.supplyAPY.toFixed(2)}%`}
+                            {`${yieldInfo.supplyAPY.toFixed(2)}%`}
                           </span>
                         </div>
                         
                         <div className="flex justify-between">
                           <span className="text-gray-600">Borrow APY:</span>
                           <span className="font-medium text-red-600">
-                            {privacyMode ? '***' : `${yieldInfo.borrowAPY.toFixed(2)}%`}
+                            {`${yieldInfo.borrowAPY.toFixed(2)}%`}
                           </span>
                         </div>
                         
                         <div className="flex justify-between">
                           <span className="text-gray-600">Utilization:</span>
                           <span className="font-medium text-blue-600">
-                            {privacyMode ? '***' : `${(yieldInfo.utilizationRate || 0).toFixed(1)}%`}
+                            {`${(yieldInfo.utilizationRate || 0).toFixed(1)}%`}
                           </span>
                         </div>
                       </div>
@@ -489,14 +489,14 @@ const RealProtocolAnalytics: React.FC<{ timeframe: string; privacyMode: boolean;
                   <div>
                     <div className="font-medium text-sm text-red-900">{liquidation.protocol}</div>
                     <div className="text-xs text-red-700">
-                      Liquidation: {privacyMode ? '***' : `${liquidation.borrower.slice(0, 6)}...${liquidation.borrower.slice(-4)}`}
+                      Liquidation: {`${liquidation.borrower.slice(0, 6)}...${liquidation.borrower.slice(-4)}`}
                     </div>
                   </div>
                 </div>
                 
                 <div className="text-right">
                   <div className="text-sm font-medium text-red-900">
-                    {privacyMode ? '***' : `${Number(liquidation.collateralAmount) / 1e18}`.slice(0, 8)}
+                    {`${Number(liquidation.collateralAmount) / 1e18}`.slice(0, 8)}
                   </div>
                   <div className="text-xs text-red-700">
                     {new Date(liquidation.timestamp).toLocaleDateString()}
@@ -541,7 +541,7 @@ const RealProtocolAnalytics: React.FC<{ timeframe: string; privacyMode: boolean;
                 
                 <div className="text-right">
                   <div className="text-sm font-medium">
-                    {privacyMode ? '***' : `${Number(interaction.amounts[0]) / 1e18}`.slice(0, 8)}
+                    {`${Number(interaction.amounts[0]) / 1e18}`.slice(0, 8)}
                   </div>
                   <div className="text-xs text-gray-600">
                     {new Date(interaction.timestamp).toLocaleDateString()}
@@ -564,7 +564,6 @@ const RealProtocolAnalytics: React.FC<{ timeframe: string; privacyMode: boolean;
       {/* Event Monitoring Analytics */}
       <EventMonitoringAnalytics
         timeframe={timeframe}
-        privacyMode={privacyMode}
         connectedAddress={connectedAddress}
       />
 
@@ -574,7 +573,6 @@ const RealProtocolAnalytics: React.FC<{ timeframe: string; privacyMode: boolean;
         showAlerts={true}
         showCharts={true}
         refreshInterval={30000}
-        privacyMode={privacyMode}
       />
 
       {/* Price Feed Source Status */}
@@ -598,7 +596,7 @@ const RealProtocolAnalytics: React.FC<{ timeframe: string; privacyMode: boolean;
             <div className="bg-yellow-50 p-4 rounded-lg">
               <div className="text-sm font-medium text-gray-600 mb-1">Total Staked</div>
               <div className="text-lg font-bold text-gray-900">
-                {privacyMode ? '***' : `${(parseFloat(stakingBehaviorData.totalStaked) / 1e18).toFixed(4)} ETH`}
+                {`${(parseFloat(stakingBehaviorData.totalStaked) / 1e18).toFixed(4)} ETH`}
               </div>
               <div className="text-xs text-gray-500 mt-1">
                 Across {stakingBehaviorData.stakingProtocols?.size || 0} protocols
@@ -607,7 +605,7 @@ const RealProtocolAnalytics: React.FC<{ timeframe: string; privacyMode: boolean;
             <div className="bg-green-50 p-4 rounded-lg">
               <div className="text-sm font-medium text-gray-600 mb-1">Total Rewards</div>
               <div className="text-lg font-bold text-gray-900">
-                {privacyMode ? '***' : `${(parseFloat(stakingBehaviorData.totalRewardsClaimed) / 1e18).toFixed(4)} ETH`}
+                {`${(parseFloat(stakingBehaviorData.totalRewardsClaimed) / 1e18).toFixed(4)} ETH`}
               </div>
               <div className="text-xs text-gray-500 mt-1">
                 Lifetime rewards claimed
@@ -616,7 +614,7 @@ const RealProtocolAnalytics: React.FC<{ timeframe: string; privacyMode: boolean;
             <div className="bg-blue-50 p-4 rounded-lg">
               <div className="text-sm font-medium text-gray-600 mb-1">Avg Duration</div>
               <div className="text-lg font-bold text-gray-900">
-                {privacyMode ? '***' : `${stakingBehaviorData.averageStakingDuration?.toFixed(0)} days`}
+                {`${stakingBehaviorData.averageStakingDuration?.toFixed(0)} days`}
               </div>
               <div className="text-xs text-gray-500 mt-1">
                 Average staking period
@@ -625,7 +623,7 @@ const RealProtocolAnalytics: React.FC<{ timeframe: string; privacyMode: boolean;
             <div className="bg-purple-50 p-4 rounded-lg">
               <div className="text-sm font-medium text-gray-600 mb-1">Staking Score</div>
               <div className="text-lg font-bold text-gray-900">
-                {privacyMode ? '***' : `${(stakingBehaviorData.stakingScore * 100).toFixed(1)}%`}
+                {`${(stakingBehaviorData.stakingScore * 100).toFixed(1)}%`}
               </div>
               <div className="text-xs text-gray-500 mt-1">
                 Risk: {stakingBehaviorData.riskLevel}
@@ -651,7 +649,7 @@ const RealProtocolAnalytics: React.FC<{ timeframe: string; privacyMode: boolean;
                       </div>
                       <div className="text-right">
                         <div className="font-medium text-green-600">
-                          {privacyMode ? '***' : `+${(parseFloat(reward.amount) / 1e18).toFixed(6)} ETH`}
+                          {`+${(parseFloat(reward.amount) / 1e18).toFixed(6)} ETH`}
                         </div>
                         <div className="text-xs text-gray-500">
                           {reward.type === 'claim_rewards' ? 'Claimed' : 'Earned'}
@@ -683,13 +681,13 @@ const RealProtocolAnalytics: React.FC<{ timeframe: string; privacyMode: boolean;
                       <div className="flex justify-between text-sm">
                         <span className="text-gray-600">Staked:</span>
                         <span className="font-medium">
-                          {privacyMode ? '***' : `${(parseFloat(data.totalStaked) / 1e18).toFixed(4)} ETH`}
+                          {`${(parseFloat(data.totalStaked) / 1e18).toFixed(4)} ETH`}
                         </span>
                       </div>
                       <div className="flex justify-between text-sm">
                         <span className="text-gray-600">Rewards:</span>
                         <span className="font-medium text-green-600">
-                          {privacyMode ? '***' : `${(parseFloat(data.totalRewards) / 1e18).toFixed(4)} ETH`}
+                          {`${(parseFloat(data.totalRewards) / 1e18).toFixed(4)} ETH`}
                         </span>
                       </div>
                       <div className="flex justify-between text-sm">
@@ -713,7 +711,7 @@ const RealProtocolAnalytics: React.FC<{ timeframe: string; privacyMode: boolean;
 const AnalyticsPanel: React.FC = () => {
   const [selectedTimeframe, setSelectedTimeframe] = useState('30d');
   const [selectedDimension, setSelectedDimension] = useState('all');
-  const [privacyMode, setPrivacyMode] = useState(false);
+
   const [showPeerComparison, setShowPeerComparison] = useState(true);
   const [realAnalyticsData, setRealAnalyticsData] = useState<AnalyticsData | null>(null);
   const [blockchainMetrics, setBlockchainMetrics] = useState<any>(null);
@@ -934,7 +932,7 @@ const AnalyticsPanel: React.FC = () => {
       scoreHistory: analyticsData.scoreHistory,
       peerComparison: showPeerComparison ? analyticsData.peerComparison : null,
       behaviorTrends: analyticsData.behaviorTrends,
-      privacyMode: privacyMode
+
     };
     
     const blob = new Blob([JSON.stringify(dataToExport, null, 2)], { type: 'application/json' });
@@ -959,16 +957,7 @@ const AnalyticsPanel: React.FC = () => {
           </div>
           
           <div className="flex items-center space-x-4">
-            {/* Privacy Toggle */}
-            <button
-              onClick={() => setPrivacyMode(!privacyMode)}
-              className={`flex items-center space-x-2 px-3 py-2 rounded-lg text-sm transition-colors ${
-                privacyMode ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'
-              }`}
-            >
-              {privacyMode ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-              <span>{privacyMode ? 'Private' : 'Public'}</span>
-            </button>
+
             
             {/* Export Button */}
             <button
@@ -1023,13 +1012,11 @@ const AnalyticsPanel: React.FC = () => {
         <RealMarketDataChart 
           symbol="ETH"
           timeframe={selectedTimeframe}
-          privacyMode={privacyMode}
           showVolume={true}
         />
         <RealMarketDataChart 
           symbol="BTC"
           timeframe={selectedTimeframe}
-          privacyMode={privacyMode}
           showVolume={true}
         />
       </div>
@@ -1045,13 +1032,11 @@ const AnalyticsPanel: React.FC = () => {
           <div className="text-center">
             <BarChart3 className="w-16 h-16 text-gray-400 mx-auto mb-2" />
             <p className="text-gray-600">
-              {privacyMode ? 'Chart hidden in privacy mode' : 'Interactive score chart would be displayed here'}
+              Interactive score chart would be displayed here
             </p>
-            {!privacyMode && (
-              <div className="mt-4 text-sm text-gray-500">
-                Score progression: 720 → 847 (+127 points over 3 months)
-              </div>
-            )}
+            <div className="mt-4 text-sm text-gray-500">
+              Score progression: 720 → 847 (+127 points over 3 months)
+            </div>
           </div>
         </div>
         
@@ -1076,7 +1061,7 @@ const AnalyticsPanel: React.FC = () => {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <div className="card text-center">
           <div className="text-3xl font-bold text-blue-600 mb-2">
-            {privacyMode ? '***' : analyticsData.timeframeData[selectedTimeframe].transactions}
+            {analyticsData.timeframeData[selectedTimeframe].transactions}
           </div>
           <div className="text-gray-600 font-medium">Total Transactions</div>
           <div className="text-sm text-gray-500 mt-1">
@@ -1086,7 +1071,7 @@ const AnalyticsPanel: React.FC = () => {
         
         <div className="card text-center">
           <div className="text-3xl font-bold text-green-600 mb-2">
-            {privacyMode ? '***' : `$${analyticsData.timeframeData[selectedTimeframe].volume.toLocaleString()}`}
+            {`$${analyticsData.timeframeData[selectedTimeframe].volume.toLocaleString()}`}
           </div>
           <div className="text-gray-600 font-medium">Total Volume</div>
           <div className="text-sm text-gray-500 mt-1">
@@ -1096,7 +1081,7 @@ const AnalyticsPanel: React.FC = () => {
         
         <div className="card text-center">
           <div className="text-3xl font-bold text-purple-600 mb-2">
-            {privacyMode ? '***' : analyticsData.timeframeData[selectedTimeframe].protocols}
+            {analyticsData.timeframeData[selectedTimeframe].protocols}
           </div>
           <div className="text-gray-600 font-medium">Protocols Used</div>
           <div className="text-sm text-gray-500 mt-1">
@@ -1124,17 +1109,17 @@ const AnalyticsPanel: React.FC = () => {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <div className="text-center p-6 bg-green-50 rounded-lg">
               <div className="text-4xl font-bold text-green-600 mb-2">
-                {privacyMode ? '***' : `${analyticsData.peerComparison.percentile}th`}
+                {`${analyticsData.peerComparison.percentile}th`}
               </div>
               <div className="text-green-700 font-medium">Percentile Rank</div>
               <div className="text-sm text-green-600 mt-1">
-                Better than {privacyMode ? '***' : analyticsData.peerComparison.percentile}% of users
+                Better than {analyticsData.peerComparison.percentile}% of users
               </div>
             </div>
             
             <div className="text-center p-6 bg-blue-50 rounded-lg">
               <div className="text-4xl font-bold text-blue-600 mb-2">
-                {privacyMode ? '***' : analyticsData.peerComparison.userScore}
+                {analyticsData.peerComparison.userScore}
               </div>
               <div className="text-blue-700 font-medium">Your Score</div>
               <div className="text-sm text-blue-600 mt-1">Current overall rating</div>
@@ -1142,7 +1127,7 @@ const AnalyticsPanel: React.FC = () => {
             
             <div className="text-center p-6 bg-gray-50 rounded-lg">
               <div className="text-4xl font-bold text-gray-600 mb-2">
-                {privacyMode ? '***' : analyticsData.peerComparison.averageScore}
+                {analyticsData.peerComparison.averageScore}
               </div>
               <div className="text-gray-700 font-medium">Network Average</div>
               <div className="text-sm text-gray-600 mt-1">All users average</div>
@@ -1155,10 +1140,7 @@ const AnalyticsPanel: React.FC = () => {
               <div>
                 <h4 className="font-medium text-green-900">Performance Insight</h4>
                 <p className="text-green-800 text-sm mt-1">
-                  {privacyMode 
-                    ? 'Performance data hidden in privacy mode'
-                    : `You're performing ${analyticsData.peerComparison.userScore - analyticsData.peerComparison.averageScore} points above the network average. Keep up the excellent work!`
-                  }
+                  You're performing {analyticsData.peerComparison.userScore - analyticsData.peerComparison.averageScore} points above the network average. Keep up the excellent work!
                 </p>
               </div>
             </div>
@@ -1168,14 +1150,12 @@ const AnalyticsPanel: React.FC = () => {
 
       {/* Market Sentiment and Fear & Greed Index */}
       <MarketSentimentDisplay 
-        privacyMode={privacyMode}
         refreshInterval={300000}
       />
 
       {/* Protocol TVL and Yield Data */}
       <ProtocolTVLDisplay 
         protocols={['uniswap', 'aave', 'compound', 'makerdao', 'curve', 'balancer']}
-        privacyMode={privacyMode}
         showYields={true}
         refreshInterval={600000}
       />
@@ -1191,14 +1171,12 @@ const AnalyticsPanel: React.FC = () => {
         </div>
         
         <RealTimePriceFeedAnalytics 
-          privacyMode={privacyMode}
         />
       </div>
 
       {/* Real Protocol Analytics Component */}
       <RealProtocolAnalytics 
         timeframe={selectedTimeframe}
-        privacyMode={privacyMode}
         connectedAddress={connectedAddress}
       />
 
@@ -1224,7 +1202,7 @@ const AnalyticsPanel: React.FC = () => {
                   trend.change === 'increase' ? 'text-green-600' : 
                   trend.change === 'decrease' ? 'text-red-600' : 'text-gray-600'
                 }`}>
-                  {privacyMode ? '***' : `${trend.trend > 0 ? '+' : ''}${trend.trend}%`}
+                  {`${trend.trend > 0 ? '+' : ''}${trend.trend}%`}
                 </span>
                 <span className="text-sm text-gray-500">
                   vs last period
@@ -1259,7 +1237,7 @@ const AnalyticsPanel: React.FC = () => {
                   <div className={`text-sm font-medium ${
                     token.priceChange24h > 0 ? 'text-green-600' : 'text-red-600'
                   }`}>
-                    {privacyMode ? '***' : `${token.priceChange24h > 0 ? '+' : ''}${token.priceChange24h.toFixed(2)}%`}
+                    {`${token.priceChange24h > 0 ? '+' : ''}${token.priceChange24h.toFixed(2)}%`}
                   </div>
                 </div>
                 
@@ -1267,7 +1245,7 @@ const AnalyticsPanel: React.FC = () => {
                   <div className="flex justify-between">
                     <span className="text-gray-600">Current Price:</span>
                     <span className="font-medium">
-                      {privacyMode ? '***' : `$${token.currentPrice.toFixed(2)}`}
+                      {`$${token.currentPrice.toFixed(2)}`}
                     </span>
                   </div>
                   
@@ -1279,7 +1257,7 @@ const AnalyticsPanel: React.FC = () => {
                       token.volatility24h > 15 ? 'text-yellow-600' :
                       'text-green-600'
                     }`}>
-                      {privacyMode ? '***' : `${token.volatility24h.toFixed(1)}%`}
+                      {`${token.volatility24h.toFixed(1)}%`}
                     </span>
                   </div>
                   
@@ -1288,14 +1266,14 @@ const AnalyticsPanel: React.FC = () => {
                     <span className={`font-medium ${
                       token.priceChange7d > 0 ? 'text-green-600' : 'text-red-600'
                     }`}>
-                      {privacyMode ? '***' : `${token.priceChange7d > 0 ? '+' : ''}${token.priceChange7d.toFixed(2)}%`}
+                      {`${token.priceChange7d > 0 ? '+' : ''}${token.priceChange7d.toFixed(2)}%`}
                     </span>
                   </div>
                   
                   <div className="flex justify-between">
                     <span className="text-gray-600">Data Points:</span>
                     <span className="font-medium text-gray-700">
-                      {privacyMode ? '***' : token.dataPoints.toLocaleString()}
+                      {token.dataPoints.toLocaleString()}
                     </span>
                   </div>
                 </div>
@@ -1309,25 +1287,25 @@ const AnalyticsPanel: React.FC = () => {
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
               <div className="text-center">
                 <div className="text-lg font-bold text-red-600">
-                  {privacyMode ? '***' : volatilityData.filter(t => t.volatility24h > 50).length}
+                  {volatilityData.filter(t => t.volatility24h > 50).length}
                 </div>
                 <div className="text-gray-600">High Volatility</div>
               </div>
               <div className="text-center">
                 <div className="text-lg font-bold text-orange-600">
-                  {privacyMode ? '***' : volatilityData.filter(t => t.volatility24h > 30 && t.volatility24h <= 50).length}
+                  {volatilityData.filter(t => t.volatility24h > 30 && t.volatility24h <= 50).length}
                 </div>
                 <div className="text-gray-600">Medium Volatility</div>
               </div>
               <div className="text-center">
                 <div className="text-lg font-bold text-green-600">
-                  {privacyMode ? '***' : volatilityData.filter(t => t.volatility24h <= 15).length}
+                  {volatilityData.filter(t => t.volatility24h <= 15).length}
                 </div>
                 <div className="text-gray-600">Low Volatility</div>
               </div>
               <div className="text-center">
                 <div className="text-lg font-bold text-blue-600">
-                  {privacyMode ? '***' : volatilityData.reduce((sum, t) => sum + t.dataPoints, 0).toLocaleString()}
+                  {volatilityData.reduce((sum, t) => sum + t.dataPoints, 0).toLocaleString()}
                 </div>
                 <div className="text-gray-600">Total Data Points</div>
               </div>
@@ -1379,7 +1357,7 @@ const AnalyticsPanel: React.FC = () => {
                     alert.severity === 'medium' ? 'text-yellow-600' :
                     'text-blue-600'
                   }`}>
-                    {privacyMode ? '***' : `${alert.currentValue.toFixed(2)}%`}
+                    {`${alert.currentValue.toFixed(2)}%`}
                   </div>
                   <div className="text-xs text-gray-500">
                     Threshold: {alert.threshold}%
@@ -1423,21 +1401,21 @@ const AnalyticsPanel: React.FC = () => {
                   <div className="flex justify-between">
                     <span className="text-gray-600">Hit Rate:</span>
                     <span className="font-medium text-green-600">
-                      {privacyMode ? '***' : `${priceCacheMetrics.hitRate.toFixed(1)}%`}
+                      {`${priceCacheMetrics.hitRate.toFixed(1)}%`}
                     </span>
                   </div>
                   
                   <div className="flex justify-between">
                     <span className="text-gray-600">Avg Latency:</span>
                     <span className="font-medium">
-                      {privacyMode ? '***' : `${priceCacheMetrics.averageLatency.toFixed(1)}ms`}
+                      {`${priceCacheMetrics.averageLatency.toFixed(1)}ms`}
                     </span>
                   </div>
                   
                   <div className="flex justify-between">
                     <span className="text-gray-600">Cached Prices:</span>
                     <span className="font-medium">
-                      {privacyMode ? '***' : priceCacheMetrics.totalKeys.toLocaleString()}
+                      {priceCacheMetrics.totalKeys.toLocaleString()}
                     </span>
                   </div>
                   
@@ -1446,14 +1424,14 @@ const AnalyticsPanel: React.FC = () => {
                     <span className={`font-medium ${
                       priceCacheMetrics.stalePrices > 0 ? 'text-yellow-600' : 'text-green-600'
                     }`}>
-                      {privacyMode ? '***' : priceCacheMetrics.stalePrices}
+                      {priceCacheMetrics.stalePrices}
                     </span>
                   </div>
                   
                   <div className="flex justify-between">
                     <span className="text-gray-600">Memory Usage:</span>
                     <span className="font-medium">
-                      {privacyMode ? '***' : `${(priceCacheMetrics.memoryUsage / 1024 / 1024).toFixed(1)}MB`}
+                      {`${(priceCacheMetrics.memoryUsage / 1024 / 1024).toFixed(1)}MB`}
                     </span>
                   </div>
                 </div>
@@ -1477,14 +1455,14 @@ const AnalyticsPanel: React.FC = () => {
                   <div className="flex justify-between">
                     <span className="text-gray-600">Healthy Sources:</span>
                     <span className="font-medium text-green-600">
-                      {privacyMode ? '***' : `${priceFailoverStatus.healthySources}/${priceFailoverStatus.totalSources}`}
+                      {`${priceFailoverStatus.healthySources}/${priceFailoverStatus.totalSources}`}
                     </span>
                   </div>
                   
                   <div className="flex justify-between">
                     <span className="text-gray-600">Enabled Sources:</span>
                     <span className="font-medium">
-                      {privacyMode ? '***' : priceFailoverStatus.enabledSources}
+                      {priceFailoverStatus.enabledSources}
                     </span>
                   </div>
                   
@@ -1493,15 +1471,14 @@ const AnalyticsPanel: React.FC = () => {
                     <span className={`font-medium ${
                       priceFailoverStatus.circuitBreakersOpen > 0 ? 'text-red-600' : 'text-green-600'
                     }`}>
-                      {privacyMode ? '***' : `${priceFailoverStatus.circuitBreakersOpen} Open`}
+                      {`${priceFailoverStatus.circuitBreakersOpen} Open`}
                     </span>
                   </div>
                   
                   <div className="flex justify-between">
                     <span className="text-gray-600">Primary Source:</span>
                     <span className="font-medium">
-                      {privacyMode ? '***' : 
-                        priceFailoverStatus.sources?.find((s: any) => s.priority === 1)?.name || 'None'}
+                      {priceFailoverStatus.sources?.find((s: any) => s.priority === 1)?.name || 'None'}
                     </span>
                   </div>
                   
