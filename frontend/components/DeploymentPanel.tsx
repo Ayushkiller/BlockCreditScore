@@ -27,37 +27,72 @@ const DeploymentPanel: React.FC = () => {
 
   const isConfigured = envConfig.GOERLI_RPC_URL && envConfig.PRIVATE_KEY && envConfig.ETHERSCAN_API_KEY;
 
-  const simulateDeployment = async (network: 'goerli' | 'sepolia') => {
+  const deployContract = async (network: 'goerli' | 'sepolia') => {
     setIsLoading(true);
     setDeploymentStep('deploying');
+    setSelectedNetwork(network);
     
     try {
-      addLog(`🚀 Starting deployment to ${network}...`);
+      addLog(`🚀 Starting REAL deployment to ${network}...`);
+      addLog(`📋 This will actually deploy the SimpleCreditScore contract`);
       
-      // Simulate deployment process
-      await new Promise(resolve => setTimeout(resolve, 3000));
-      
-      const newDeployment = {
-        network,
-        contractAddress: `0x${Math.random().toString(16).substr(2, 40)}`,
-        blockNumber: Math.floor(Math.random() * 1000000) + 8000000,
-        gasUsed: Math.floor(Math.random() * 500000) + 900000,
-        timestamp: Date.now(),
-        status: 'deployed' as const
-      };
+      const response = await fetch('/api/deployment/deploy', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ network }),
+      });
 
-      addLog(`✅ Contract deployed to ${network}: ${newDeployment.contractAddress}`);
-      addLog(`📦 Block number: ${newDeployment.blockNumber}`);
-      addLog(`⛽ Gas used: ${newDeployment.gasUsed.toLocaleString()}`);
+      const data = await response.json();
+
+      if (!response.ok || !data.success) {
+        throw new Error(data.error || 'Deployment failed');
+      }
+
+      const deployment = data.deployment;
+      
+      addLog(`✅ Contract deployed to ${network}: ${deployment.contractAddress}`);
+      addLog(`📦 Block number: ${deployment.blockNumber}`);
+      addLog(`⛽ Gas used: ${deployment.gasUsed.toLocaleString()}`);
+      addLog(`🔗 View on Etherscan: ${getNetworkExplorer(network)}/address/${deployment.contractAddress}`);
 
       setDeploymentStep('verifying');
       addLog(`🔍 Verifying contract on Etherscan...`);
       
-      // Simulate verification
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      
-      newDeployment.status = 'verified';
-      addLog(`✅ Contract verified successfully!`);
+      // Try to verify the contract
+      try {
+        const verifyResponse = await fetch('/api/deployment/verify', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ 
+            address: deployment.contractAddress, 
+            network 
+          }),
+        });
+
+        const verifyData = await verifyResponse.json();
+        
+        if (verifyData.success && verifyData.verified) {
+          deployment.verified = true;
+          addLog(`✅ Contract verified successfully on Etherscan!`);
+        } else {
+          addLog(`⚠️ Contract deployed but verification failed: ${verifyData.message}`);
+        }
+      } catch (verifyError) {
+        addLog(`⚠️ Contract deployed but verification failed: ${verifyError.message}`);
+      }
+
+      const newDeployment = {
+        network,
+        contractAddress: deployment.contractAddress,
+        blockNumber: deployment.blockNumber,
+        gasUsed: deployment.gasUsed,
+        timestamp: deployment.timestamp,
+        status: deployment.verified ? 'verified' as const : 'deployed' as const
+      };
       
       setDeployments([...deployments, newDeployment]);
       setDeploymentStep('complete');
@@ -67,7 +102,8 @@ const DeploymentPanel: React.FC = () => {
       }, 3000);
 
     } catch (error) {
-      addLog(`❌ Deployment failed: ${error}`);
+      addLog(`❌ REAL deployment failed: ${error.message}`);
+      addLog(`💡 Check your environment configuration and network connection`);
       setDeploymentStep('idle');
     } finally {
       setIsLoading(false);
@@ -195,7 +231,7 @@ const DeploymentPanel: React.FC = () => {
             </div>
             
             <button
-              onClick={() => simulateDeployment('goerli')}
+              onClick={() => deployContract('goerli')}
               disabled={!isConfigured || isLoading}
               className="btn btn-primary w-full mt-4 flex items-center justify-center space-x-2"
             >
@@ -243,7 +279,7 @@ const DeploymentPanel: React.FC = () => {
             </div>
             
             <button
-              onClick={() => simulateDeployment('sepolia')}
+              onClick={() => deployContract('sepolia')}
               disabled={!isConfigured || isLoading}
               className="btn btn-primary w-full mt-4 flex items-center justify-center space-x-2"
             >

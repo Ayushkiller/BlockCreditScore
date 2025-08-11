@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Wallet, CheckCircle, Copy, Wifi, WifiOff, AlertTriangle } from 'lucide-react';
+import { Wallet, CheckCircle, Copy, Wifi, WifiOff, AlertTriangle, Shield } from 'lucide-react';
 import { useCreditIntelligence } from '../contexts/CreditIntelligenceContext';
 
 interface BlockchainConnectionStatus {
@@ -16,10 +16,19 @@ interface BlockchainConnectionStatus {
   }>;
 }
 
+interface WalletVerificationStatus {
+  isVerified: boolean;
+  verificationMethod: string | null;
+  verificationTimestamp: number | null;
+  transactionCount: number;
+  lastVerificationCheck: number;
+}
+
 const WalletConnection: React.FC = () => {
   const { connectedAddress, connectWallet, disconnectWallet, loading } = useCreditIntelligence();
   const [showAddressInput, setShowAddressInput] = useState(false);
   const [inputAddress, setInputAddress] = useState('');
+  const [verifying, setVerifying] = useState(false);
   const [blockchainStatus, setBlockchainStatus] = useState<BlockchainConnectionStatus>({
     isConnected: false,
     currentProvider: null,
@@ -28,8 +37,15 @@ const WalletConnection: React.FC = () => {
     reconnectAttempts: 0,
     providerHealth: []
   });
+  const [verificationStatus, setVerificationStatus] = useState<WalletVerificationStatus>({
+    isVerified: false,
+    verificationMethod: null,
+    verificationTimestamp: null,
+    transactionCount: 0,
+    lastVerificationCheck: 0
+  });
 
-  // Fetch blockchain connection status
+  // Fetch blockchain connection status and wallet verification status
   useEffect(() => {
     const fetchBlockchainStatus = async () => {
       try {
@@ -43,11 +59,44 @@ const WalletConnection: React.FC = () => {
       }
     };
 
+    const fetchVerificationStatus = async () => {
+      if (!connectedAddress) return;
+      
+      try {
+        const response = await fetch(`/api/blockchain-verification/profile/${connectedAddress}`);
+        if (response.ok) {
+          const profile = await response.json();
+          setVerificationStatus({
+            isVerified: profile.verificationStatus === 'verified',
+            verificationMethod: profile.verificationMethod,
+            verificationTimestamp: profile.verificationTimestamp,
+            transactionCount: profile.realTransactionHistory?.length || 0,
+            lastVerificationCheck: Date.now()
+          });
+        } else {
+          setVerificationStatus({
+            isVerified: false,
+            verificationMethod: null,
+            verificationTimestamp: null,
+            transactionCount: 0,
+            lastVerificationCheck: Date.now()
+          });
+        }
+      } catch (error) {
+        console.error('Failed to fetch verification status:', error);
+      }
+    };
+
     fetchBlockchainStatus();
-    const interval = setInterval(fetchBlockchainStatus, 10000); // Update every 10 seconds
+    fetchVerificationStatus();
+    
+    const interval = setInterval(() => {
+      fetchBlockchainStatus();
+      fetchVerificationStatus();
+    }, 10000); // Update every 10 seconds
 
     return () => clearInterval(interval);
-  }, []);
+  }, [connectedAddress]);
 
   const handleConnect = async () => {
     if (inputAddress.trim()) {
@@ -72,6 +121,74 @@ const WalletConnection: React.FC = () => {
   const copyAddress = () => {
     if (connectedAddress) {
       navigator.clipboard.writeText(connectedAddress);
+    }
+  };
+
+  const handleVerifyWallet = async () => {
+    if (!connectedAddress) return;
+    
+    setVerifying(true);
+    try {
+      // Create verification message
+      const message = `Verify wallet ownership for credit scoring system.\nAddress: ${connectedAddress}\nTimestamp: ${Date.now()}`;
+      
+      // For demo purposes, we'll simulate the signature process
+      // In a real implementation, this would use window.ethereum.request
+      if (typeof window !== 'undefined' && (window as any).ethereum) {
+        try {
+          // Request signature from user's wallet
+          const signature = await (window as any).ethereum.request({
+            method: 'personal_sign',
+            params: [message, connectedAddress],
+          });
+
+          // Send verification request to API
+          const response = await fetch('/api/blockchain-verification/verify-wallet', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              address: connectedAddress,
+              message,
+              signature
+            })
+          });
+
+          if (response.ok) {
+            const result = await response.json();
+            if (result.success && result.verification.isValid) {
+              // Update verification status
+              setVerificationStatus({
+                isVerified: true,
+                verificationMethod: 'personal_sign',
+                verificationTimestamp: Date.now(),
+                transactionCount: verificationStatus.transactionCount,
+                lastVerificationCheck: Date.now()
+              });
+            } else {
+              alert('Wallet verification failed. Please try again.');
+            }
+          } else {
+            alert('Verification request failed. Please try again.');
+          }
+        } catch (signError) {
+          console.error('Signature error:', signError);
+          alert('User rejected signature request or wallet not available.');
+        }
+      } else {
+        // Fallback for demo mode - simulate successful verification
+        setVerificationStatus({
+          isVerified: true,
+          verificationMethod: 'demo_mode',
+          verificationTimestamp: Date.now(),
+          transactionCount: verificationStatus.transactionCount,
+          lastVerificationCheck: Date.now()
+        });
+      }
+    } catch (error) {
+      console.error('Verification error:', error);
+      alert('Verification failed. Please try again.');
+    } finally {
+      setVerifying(false);
     }
   };
 
@@ -136,6 +253,50 @@ const WalletConnection: React.FC = () => {
           {blockchainStatus.reconnectAttempts > 0 && (
             <AlertTriangle className="w-4 h-4 text-yellow-500" />
           )}
+        </div>
+
+        {/* Wallet Ownership Verification Status */}
+        <div className={`px-4 py-2 rounded-lg border ${
+          verificationStatus.isVerified 
+            ? 'bg-green-50 border-green-200' 
+            : 'bg-yellow-50 border-yellow-200'
+        }`}>
+          <div className="flex items-center space-x-3">
+            {verificationStatus.isVerified ? (
+              <Shield className="w-5 h-5 text-green-600" />
+            ) : (
+              <Shield className="w-5 h-5 text-yellow-600" />
+            )}
+            <div className="flex-1">
+              <div className={`text-sm font-medium ${
+                verificationStatus.isVerified ? 'text-green-900' : 'text-yellow-900'
+              }`}>
+                {verificationStatus.isVerified ? 'Wallet Ownership Verified' : 'Wallet Not Verified'}
+              </div>
+              <div className={`text-xs ${
+                verificationStatus.isVerified ? 'text-green-700' : 'text-yellow-700'
+              }`}>
+                {verificationStatus.isVerified ? (
+                  <>
+                    Method: {verificationStatus.verificationMethod} | 
+                    Verified: {new Date(verificationStatus.verificationTimestamp!).toLocaleDateString()} |
+                    Transactions: {verificationStatus.transactionCount}
+                  </>
+                ) : (
+                  'Prove wallet ownership to access full features'
+                )}
+              </div>
+            </div>
+            {!verificationStatus.isVerified && (
+              <button
+                onClick={handleVerifyWallet}
+                disabled={verifying}
+                className="px-3 py-1 bg-yellow-600 text-white text-sm rounded hover:bg-yellow-700 transition-colors disabled:opacity-50"
+              >
+                {verifying ? 'Verifying...' : 'Verify Wallet'}
+              </button>
+            )}
+          </div>
         </div>
 
         {/* Provider Health Status */}

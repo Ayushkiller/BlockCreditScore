@@ -1,9 +1,11 @@
 // DeFi Market Data Service - Integrates with real DeFi market APIs
 // Implements task 4.2: Implement real DeFi market data integration
+// Enhanced with task 9.1: Production-ready error handling for real APIs
 
 import { formatError } from '../../utils/errors';
 import { getCurrentTimestamp } from '../../utils/time';
 import { getRealDataConfigManager } from '../../config/real-data-config';
+import { getAPIErrorManager, APIError } from './api-error-manager';
 
 export interface TVLData {
   protocol: string;
@@ -133,6 +135,7 @@ export class DeFiMarketDataService {
   private volatilityCache: Map<string, MarketVolatilityData> = new Map();
   private isInitialized: boolean = false;
   private updateInterval: NodeJS.Timeout | null = null;
+  private errorManager = getAPIErrorManager();
 
   // Supported DeFi protocols
   private readonly SUPPORTED_PROTOCOLS = [
@@ -161,6 +164,9 @@ export class DeFiMarketDataService {
         throw new Error('Real data integration is not enabled');
       }
 
+      // Setup error handling callbacks
+      this.setupErrorHandling();
+
       // Initial data fetch
       await this.updateAllMarketData();
 
@@ -179,6 +185,65 @@ export class DeFiMarketDataService {
       console.error('Failed to initialize DeFi market data service:', formatError(error));
       throw error;
     }
+  }
+
+  /**
+   * Setup error handling callbacks for API monitoring
+   */
+  private setupErrorHandling(): void {
+    // Register error callbacks for different providers
+    this.errorManager.onError('defillama', (error: APIError) => {
+      console.error(`DefiLlama API error: ${error.message} (${error.code})`);
+      if (error.code === 'RATE_LIMITED') {
+        console.warn('DefiLlama rate limited, extending update interval');
+        this.extendUpdateInterval(error.retryAfter || 300000); // 5 minutes default
+      }
+    });
+
+    this.errorManager.onError('alternative.me', (error: APIError) => {
+      console.error(`Fear & Greed Index API error: ${error.message} (${error.code})`);
+    });
+
+    // Register recovery callbacks
+    this.errorManager.onRecovery('defillama', (provider: string) => {
+      console.log(`${provider} recovered, resuming normal update interval`);
+      this.resetUpdateInterval();
+    });
+  }
+
+  /**
+   * Extend update interval due to rate limiting
+   */
+  private extendUpdateInterval(additionalDelay: number): void {
+    if (this.updateInterval) {
+      clearInterval(this.updateInterval);
+    }
+
+    // Extend to 20 minutes during rate limiting
+    this.updateInterval = setInterval(async () => {
+      try {
+        await this.updateAllMarketData();
+      } catch (error) {
+        console.error('Error updating DeFi market data:', formatError(error));
+      }
+    }, 20 * 60 * 1000);
+  }
+
+  /**
+   * Reset to normal update interval
+   */
+  private resetUpdateInterval(): void {
+    if (this.updateInterval) {
+      clearInterval(this.updateInterval);
+    }
+
+    this.updateInterval = setInterval(async () => {
+      try {
+        await this.updateAllMarketData();
+      } catch (error) {
+        console.error('Error updating DeFi market data:', formatError(error));
+      }
+    }, 10 * 60 * 1000);
   }
 
   /**

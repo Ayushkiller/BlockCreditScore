@@ -20,12 +20,17 @@ import {
   WifiOff,
   DollarSign,
   Percent,
+  Database,
+  Server,
 } from "lucide-react";
 import { useCreditIntelligence } from "../contexts/CreditIntelligenceContext";
 import RealTimePriceDisplay from "./RealTimePriceDisplay";
 import USDValueDisplay from "./USDValueDisplay";
 import RealTimeEventMonitor from "./RealTimeEventMonitor";
 import RealTimeScoreTracker from "./RealTimeScoreTracker";
+import BlockchainVerificationStatus from "./BlockchainVerificationStatus";
+import DataIntegrityVerificationPanel from "./DataIntegrityVerificationPanel";
+import WebSocketConnectionStatus from "./WebSocketConnectionStatus";
 
 interface CreditDimension {
   name: string;
@@ -467,6 +472,9 @@ const RealUserBehaviorAnalysis: React.FC<{
             <h3 className="text-xl font-semibold text-gray-900">
               Transaction Pattern Analysis
             </h3>
+            <div className="text-sm text-gray-500 bg-blue-50 px-2 py-1 rounded">
+              Based on real blockchain data
+            </div>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
@@ -512,6 +520,18 @@ const RealUserBehaviorAnalysis: React.FC<{
           </div>
         </div>
       )}
+
+      {/* Blockchain Verification Status */}
+      <BlockchainVerificationStatus 
+        address={userAddress} 
+        onVerificationChange={(status) => {
+          // Handle verification status changes
+          console.log('Verification status updated:', status);
+        }}
+      />
+
+      {/* Data Integrity Verification Panel */}
+      <DataIntegrityVerificationPanel address={userAddress} />
     </div>
   );
 };
@@ -1557,7 +1577,13 @@ const CreditDashboard: React.FC = () => {
     setPrivacyMode,
     connectedAddress,
     refreshProfile,
+    analyzeAddress,
   } = useCreditIntelligence();
+
+  // Address input for demo mode
+  const [directAddress, setDirectAddress] = useState('');
+  const [showAddressInput, setShowAddressInput] = useState(false);
+  const [currentAnalysisAddress, setCurrentAnalysisAddress] = useState<string | null>(null);
 
   // Real-time blockchain event monitoring state
   const [recentEvents, setRecentEvents] = useState<BlockchainEvent[]>([]);
@@ -1575,9 +1601,9 @@ const CreditDashboard: React.FC = () => {
   const [realTimeTransactions, setRealTimeTransactions] = useState<any[]>([]);
   const [pendingTransactions, setPendingTransactions] = useState<any[]>([]);
 
-  // Set up real-time monitoring when address is connected
+  // Set up real-time monitoring when address is available
   useEffect(() => {
-    if (!connectedAddress) return;
+    if (!activeAddress) return;
 
     let unsubscribeTransactions: (() => void) | undefined;
     let unsubscribeEvents: (() => void) | undefined;
@@ -1593,7 +1619,7 @@ const CreditDashboard: React.FC = () => {
         // Subscribe to real-time transaction updates
         unsubscribeTransactions =
           await creditIntelligenceService.subscribeToTransactionUpdates?.(
-            connectedAddress,
+            activeAddress,
             (transaction) => {
               console.log("🔍 Real-time transaction detected:", transaction);
 
@@ -1624,7 +1650,7 @@ const CreditDashboard: React.FC = () => {
                 id: event.eventId,
                 eventName: event.eventName,
                 protocol: event.protocolName || "Unknown",
-                userAddress: connectedAddress,
+                userAddress: activeAddress,
                 transactionHash: event.transactionHash,
                 blockNumber: event.blockNumber,
                 timestamp: event.timestamp,
@@ -1684,7 +1710,7 @@ const CreditDashboard: React.FC = () => {
             id: event.eventId,
             eventName: event.eventName,
             protocol: event.protocolName || "Unknown",
-            userAddress: connectedAddress,
+            userAddress: activeAddress,
             transactionHash: event.transactionHash,
             blockNumber: event.blockNumber,
             timestamp: event.timestamp,
@@ -1713,7 +1739,7 @@ const CreditDashboard: React.FC = () => {
       if (unsubscribeEvents) unsubscribeEvents();
       if (unsubscribeStatus) unsubscribeStatus();
     };
-  }, [connectedAddress]);
+  }, [activeAddress]);
 
   // Transform profile data for display
   const displayDimensions: CreditDimension[] = profile
@@ -1807,19 +1833,80 @@ const CreditDashboard: React.FC = () => {
     );
   }
 
-  if (!connectedAddress) {
+  // Handle direct address analysis
+  const handleAnalyzeAddress = async () => {
+    if (!directAddress.trim()) return;
+    
+    // Basic Ethereum address validation
+    if (!/^0x[a-fA-F0-9]{40}$/.test(directAddress.trim())) {
+      alert('Please enter a valid Ethereum address');
+      return;
+    }
+    
+    const address = directAddress.trim();
+    setCurrentAnalysisAddress(address);
+    setShowAddressInput(false);
+    setDirectAddress('');
+    
+    // Load profile data for the address
+    await analyzeAddress(address);
+  };
+
+  // Use connected address or direct analysis address
+  const activeAddress = connectedAddress || currentAnalysisAddress;
+
+  if (!activeAddress) {
     return (
       <div className="card text-center">
         <Shield className="w-16 h-16 text-gray-400 mx-auto mb-4" />
         <h3 className="text-xl font-semibold text-gray-900 mb-2">
-          No Wallet Connected
+          Credit Intelligence Dashboard
         </h3>
-        <p className="text-gray-600 mb-4">
-          Connect your wallet to view your credit intelligence profile
+        <p className="text-gray-600 mb-6">
+          Analyze any Ethereum address for credit scoring and DeFi behavior
         </p>
-        <p className="text-sm text-gray-500">
-          Use the wallet connection button in the header to get started
-        </p>
+        
+        {!showAddressInput ? (
+          <div className="space-y-4">
+            <button
+              onClick={() => setShowAddressInput(true)}
+              className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+            >
+              Analyze Any Address
+            </button>
+            <p className="text-sm text-gray-500">
+              Or connect your wallet using the button in the header
+            </p>
+          </div>
+        ) : (
+          <div className="max-w-md mx-auto space-y-4">
+            <input
+              type="text"
+              value={directAddress}
+              onChange={(e) => setDirectAddress(e.target.value)}
+              placeholder="Enter Ethereum address (0x...)"
+              className="w-full px-4 py-3 border border-gray-300 rounded-lg text-sm"
+            />
+            <div className="flex space-x-3">
+              <button
+                onClick={handleAnalyzeAddress}
+                disabled={!directAddress.trim()}
+                className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50"
+              >
+                Analyze Address
+              </button>
+              <button
+                onClick={() => {
+                  setShowAddressInput(false);
+                  setDirectAddress('');
+                }}
+                className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        )}
       </div>
     );
   }
@@ -1843,6 +1930,40 @@ const CreditDashboard: React.FC = () => {
 
   return (
     <div className="space-y-8">
+      {/* Address Header */}
+      <div className="card">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center space-x-3">
+            <Shield className="w-6 h-6 text-blue-600" />
+            <div>
+              <h2 className="text-lg font-semibold text-gray-900">
+                Credit Analysis
+              </h2>
+              <div className="flex items-center space-x-2">
+                <span className="text-sm text-gray-600">Address:</span>
+                <code className="text-sm bg-gray-100 px-2 py-1 rounded">
+                  {activeAddress?.slice(0, 6)}...{activeAddress?.slice(-4)}
+                </code>
+                {connectedAddress && (
+                  <span className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded">
+                    Connected Wallet
+                  </span>
+                )}
+              </div>
+            </div>
+          </div>
+          <button
+            onClick={() => {
+              setCurrentAnalysisAddress(null);
+              setShowAddressInput(true);
+            }}
+            className="px-4 py-2 text-sm border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+          >
+            Analyze Different Address
+          </button>
+        </div>
+      </div>
+
       {/* Header with Privacy Toggle */}
       <div className="card">
         <div className="flex items-center justify-between">
@@ -1882,7 +2003,7 @@ const CreditDashboard: React.FC = () => {
           Real Transaction Analysis
         </h3>
         <RealTransactionAnalysis
-          userAddress={connectedAddress}
+          userAddress={activeAddress}
           privacyMode={privacyMode}
         />
       </div>
@@ -2120,7 +2241,7 @@ const CreditDashboard: React.FC = () => {
 
       {/* Real-Time Blockchain Event Monitor */}
       <RealTimeEventMonitor
-        userAddress={connectedAddress}
+        userAddress={activeAddress}
         privacyMode={privacyMode}
         showNotifications={true}
         maxEvents={50}
@@ -2128,7 +2249,7 @@ const CreditDashboard: React.FC = () => {
 
       {/* Real-Time Score Tracker */}
       <RealTimeScoreTracker
-        userAddress={connectedAddress}
+        userAddress={activeAddress}
         privacyMode={privacyMode}
         onScoreUpdate={(update) => {
           console.log('Score update received in dashboard:', update);
@@ -2147,7 +2268,7 @@ const CreditDashboard: React.FC = () => {
         </div>
 
         <RealProtocolPositions
-          userAddress={connectedAddress}
+          userAddress={activeAddress}
           privacyMode={privacyMode}
         />
       </div>
@@ -2291,7 +2412,7 @@ const CreditDashboard: React.FC = () => {
                           : "Unknown"}
                       </div>
                       <div className="text-xs text-gray-600">
-                        {tx.from === connectedAddress ? "Outgoing" : "Incoming"}
+                        {tx.from === activeAddress ? "Outgoing" : "Incoming"}
                       </div>
                     </div>
                   </div>
@@ -2325,6 +2446,9 @@ const CreditDashboard: React.FC = () => {
           </div>
         )}
       </div>
+
+      {/* Connection Status and Data Availability */}
+      <WebSocketConnectionStatus />
 
       {/* Improvement Recommendations */}
       <div className="card">

@@ -111,6 +111,7 @@ interface CreditIntelligenceContextType {
   // Actions
   connectWallet: (address: string) => Promise<void>;
   disconnectWallet: () => void;
+  analyzeAddress: (address: string) => Promise<void>;
   refreshProfile: () => Promise<void>;
   refreshAnalytics: (timeframe?: string) => Promise<void>;
   refreshAchievements: () => Promise<void>;
@@ -215,6 +216,36 @@ export const CreditIntelligenceProvider: React.FC<CreditIntelligenceProviderProp
       setActiveProofs([]);
     }
   }, [connectedAddress]);
+
+  // Add method to analyze any address without connecting wallet
+  const analyzeAddress = async (address: string) => {
+    setLoading(true);
+    setError(null);
+    
+    try {
+      // Import the service dynamically
+      const { creditIntelligenceService } = await import('../services/creditIntelligenceService');
+
+      // Load profile with real transaction data for any address
+      const profileData = await creditIntelligenceService.getCreditProfile(address);
+      if (profileData) {
+        setProfile(profileData);
+        setAchievements(profileData.achievements || []);
+      }
+
+      // Load analytics with real blockchain metrics
+      const analyticsData = await creditIntelligenceService.getAnalytics(address, '30d');
+      if (analyticsData) {
+        setAnalytics(analyticsData);
+      }
+
+    } catch (error) {
+      console.error('Error analyzing address:', error);
+      setError('Failed to analyze address');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const loadProfileData = async (address: string) => {
     setLoading(true);
@@ -475,6 +506,7 @@ export const CreditIntelligenceProvider: React.FC<CreditIntelligenceProviderProp
     // Actions
     connectWallet,
     disconnectWallet,
+    analyzeAddress,
     refreshProfile,
     refreshAnalytics,
     refreshAchievements,

@@ -17,7 +17,9 @@ import {
   TrendingDown,
   Zap,
   Database,
-  Network
+  Network,
+  Clock,
+  Wifi
 } from 'lucide-react';
 import RealMarketDataChart from './RealMarketDataChart';
 import MarketSentimentDisplay from './MarketSentimentDisplay';
@@ -27,6 +29,7 @@ import RealTimeEventMonitor from './RealTimeEventMonitor';
 import EventMonitoringAnalytics from './EventMonitoringAnalytics';
 import RealTimeVolatilityMonitor from './RealTimeVolatilityMonitor';
 import PriceFeedSourceStatus from './PriceFeedSourceStatus';
+import APIHealthMonitor from './APIHealthMonitor';
 
 interface AnalyticsData {
   scoreHistory: { date: string; score: number; dimension: string }[];
@@ -395,7 +398,7 @@ const RealProtocolAnalytics: React.FC<{ timeframe: string; privacyMode: boolean;
                     <div className="text-right">
                       <div className="font-medium flex items-center">
                         <Percent className="w-4 h-4 text-blue-600 mr-1" />
-                        {privacyMode ? '***' : `${data.utilizationRate.toFixed(1)}%`}
+                        {privacyMode ? '***' : `${(data.utilizationRate || 0).toFixed(1)}%`}
                       </div>
                     </div>
                   </div>
@@ -457,7 +460,7 @@ const RealProtocolAnalytics: React.FC<{ timeframe: string; privacyMode: boolean;
                         <div className="flex justify-between">
                           <span className="text-gray-600">Utilization:</span>
                           <span className="font-medium text-blue-600">
-                            {privacyMode ? '***' : `${yieldInfo.utilizationRate.toFixed(1)}%`}
+                            {privacyMode ? '***' : `${(yieldInfo.utilizationRate || 0).toFixed(1)}%`}
                           </span>
                         </div>
                       </div>
@@ -1701,6 +1704,19 @@ const AnalyticsPanel: React.FC = () => {
             )}
           </div>
         )}
+      </div>
+
+      {/* API Health and Performance Monitoring */}
+      <div className="card">
+        <div className="flex items-center space-x-3 mb-6">
+          <Wifi className="w-6 h-6 text-blue-600" />
+          <h3 className="text-xl font-semibold text-gray-900">API Performance & Health</h3>
+          <div className="text-sm text-gray-500">
+            Real-time monitoring of external API integrations
+          </div>
+        </div>
+        
+        <APIHealthMonitor />
       </div>
 
       {/* Data Export Options */}

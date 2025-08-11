@@ -1,9 +1,11 @@
 // Real Market Data Service - Integrates with live APIs for authentic market data
 // Implements task 4.1: Replace mock price data with live API feeds
+// Enhanced with task 9.1: Production-ready error handling for real APIs
 
 import { formatError } from '../../utils/errors';
 import { getCurrentTimestamp } from '../../utils/time';
 import { getRealDataConfigManager } from '../../config/real-data-config';
+import { getAPIErrorManager, APIError } from './api-error-manager';
 
 export interface RealPriceData {
   symbol: string;
@@ -52,6 +54,7 @@ export class RealMarketDataService {
   private subscriptions: Map<string, PriceSubscription> = new Map();
   private isInitialized: boolean = false;
   private updateInterval: NodeJS.Timeout | null = null;
+  private errorManager = getAPIErrorManager();
 
   // CoinGecko coin ID mappings
   private readonly COINGECKO_COIN_IDS: Record<string, string> = {
@@ -95,6 +98,9 @@ export class RealMarketDataService {
         throw new Error('Real data integration is not enabled');
       }
 
+      // Setup error handling callbacks
+      this.setupErrorHandling();
+
       // Start automatic price updates
       await this.startPriceUpdates();
       
@@ -103,6 +109,55 @@ export class RealMarketDataService {
     } catch (error) {
       console.error('Failed to initialize real market data service:', formatError(error));
       throw error;
+    }
+  }
+
+  /**
+   * Setup error handling callbacks for API monitoring
+   */
+  private setupErrorHandling(): void {
+    // Register error callback for CoinGecko
+    this.errorManager.onError('coingecko', (error: APIError) => {
+      console.error(`CoinGecko API error: ${error.message} (${error.code})`);
+      
+      // If rate limited, pause updates temporarily
+      if (error.code === 'RATE_LIMITED') {
+        console.warn('CoinGecko rate limited, pausing updates');
+        this.pauseUpdatesTemporarily(error.retryAfter || 60000);
+      }
+    });
+
+    // Register recovery callback
+    this.errorManager.onRecovery('coingecko', (provider: string) => {
+      console.log(`${provider} recovered, resuming normal operations`);
+      this.resumeUpdates();
+    });
+  }
+
+  /**
+   * Pause updates temporarily due to rate limiting or errors
+   */
+  private pauseUpdatesTemporarily(pauseDuration: number): void {
+    if (this.updateInterval) {
+      clearInterval(this.updateInterval);
+      this.updateInterval = null;
+    }
+
+    setTimeout(() => {
+      this.startPriceUpdates().catch(error => {
+        console.error('Failed to resume price updates:', formatError(error));
+      });
+    }, pauseDuration);
+  }
+
+  /**
+   * Resume normal update operations
+   */
+  private resumeUpdates(): void {
+    if (!this.updateInterval) {
+      this.startPriceUpdates().catch(error => {
+        console.error('Failed to resume price updates:', formatError(error));
+      });
     }
   }
 
@@ -124,7 +179,7 @@ export class RealMarketDataService {
   }
 
   /**
-   * Get real-time price from CoinGecko API
+   * Get real-time price from CoinGecko API with comprehensive error handling
    */
   public async getRealTimePriceFromCoinGecko(symbol: string): Promise<RealPriceData> {
     const coinId = this.COINGECKO_COIN_IDS[symbol.toUpperCase()];
@@ -139,29 +194,33 @@ export class RealMarketDataService {
       throw new Error('CoinGecko provider not available');
     }
 
+    const url = `${coinGeckoProvider.baseUrl}/simple/price?ids=${coinId}&vs_currencies=usd&include_24hr_change=true&include_24hr_vol=true&include_market_cap=true&include_last_updated_at=true`;
+    
+    const headers: Record<string, string> = {
+      'Accept': 'application/json',
+      'User-Agent': 'CryptoVault-Credit-Intelligence/1.0'
+    };
+
+    // Add API key if available
+    if (coinGeckoProvider.apiKey) {
+      headers['X-CG-Demo-API-Key'] = coinGeckoProvider.apiKey;
+    }
+
     try {
-      const url = `${coinGeckoProvider.baseUrl}/simple/price?ids=${coinId}&vs_currencies=usd&include_24hr_change=true&include_24hr_vol=true&include_market_cap=true&include_last_updated_at=true`;
-      
-      const headers: Record<string, string> = {
-        'Accept': 'application/json',
-        'User-Agent': 'CryptoVault-Credit-Intelligence/1.0'
-      };
+      const data: CoinGeckoResponse = await this.errorManager.executeWithErrorHandling(
+        'coingecko',
+        url,
+        () => fetch(url, {
+          method: 'GET',
+          headers
+        }),
+        {
+          maxRetries: 3,
+          baseDelay: 2000,
+          retryableStatusCodes: [408, 429, 500, 502, 503, 504]
+        }
+      );
 
-      // Add API key if available
-      if (coinGeckoProvider.apiKey) {
-        headers['X-CG-Demo-API-Key'] = coinGeckoProvider.apiKey;
-      }
-
-      const response = await fetch(url, {
-        method: 'GET',
-        headers
-      });
-
-      if (!response.ok) {
-        throw new Error(`CoinGecko API error: ${response.status} ${response.statusText}`);
-      }
-
-      const data: CoinGeckoResponse = await response.json();
       const coinData = data[coinId];
 
       if (!coinData) {
@@ -187,12 +246,23 @@ export class RealMarketDataService {
       return priceData;
     } catch (error) {
       console.error(`Failed to fetch CoinGecko price for ${symbol}:`, formatError(error));
+      
+      // Try to return cached data if available
+      const cachedPrice = this.priceCache.get(symbol.toUpperCase());
+      if (cachedPrice) {
+        console.warn(`Using cached price for ${symbol} due to API error`);
+        return {
+          ...cachedPrice,
+          confidence: Math.max(0, cachedPrice.confidence - 20) // Reduce confidence for stale data
+        };
+      }
+      
       throw error;
     }
   }
 
   /**
-   * Get historical price data from CoinGecko
+   * Get historical price data from CoinGecko with error handling
    */
   public async getHistoricalPrices(
     symbol: string, 
@@ -210,29 +280,31 @@ export class RealMarketDataService {
       throw new Error('CoinGecko provider not available');
     }
 
+    const url = `${coinGeckoProvider.baseUrl}/coins/${coinId}/market_chart?vs_currency=usd&days=${days}&interval=daily`;
+    
+    const headers: Record<string, string> = {
+      'Accept': 'application/json',
+      'User-Agent': 'CryptoVault-Credit-Intelligence/1.0'
+    };
+
+    if (coinGeckoProvider.apiKey) {
+      headers['X-CG-Demo-API-Key'] = coinGeckoProvider.apiKey;
+    }
+
     try {
-      const url = `${coinGeckoProvider.baseUrl}/coins/${coinId}/market_chart?vs_currency=usd&days=${days}&interval=daily`;
-      
-      const headers: Record<string, string> = {
-        'Accept': 'application/json',
-        'User-Agent': 'CryptoVault-Credit-Intelligence/1.0'
-      };
-
-      if (coinGeckoProvider.apiKey) {
-        headers['X-CG-Demo-API-Key'] = coinGeckoProvider.apiKey;
-      }
-
-      const response = await fetch(url, {
-        method: 'GET',
-        headers,
-        timeout: coinGeckoProvider.timeout
-      });
-
-      if (!response.ok) {
-        throw new Error(`CoinGecko historical API error: ${response.status} ${response.statusText}`);
-      }
-
-      const data: CoinGeckoHistoricalResponse = await response.json();
+      const data: CoinGeckoHistoricalResponse = await this.errorManager.executeWithErrorHandling(
+        'coingecko',
+        url,
+        () => fetch(url, {
+          method: 'GET',
+          headers
+        }),
+        {
+          maxRetries: 2,
+          baseDelay: 3000,
+          retryableStatusCodes: [408, 429, 500, 502, 503, 504]
+        }
+      );
 
       return data.prices.map(([timestamp, price], index) => ({
         timestamp,
@@ -470,7 +542,7 @@ export class RealMarketDataService {
   }
 
   /**
-   * Get service status
+   * Get service status including API health metrics
    */
   public getServiceStatus(): {
     isInitialized: boolean;
@@ -478,6 +550,9 @@ export class RealMarketDataService {
     activeSubscriptions: number;
     lastUpdate: number;
     supportedTokens: string[];
+    apiHealth: any[];
+    apiMetrics: any[];
+    rateLimits: any;
   } {
     const prices = Array.from(this.priceCache.values());
     const lastUpdate = prices.length > 0 
@@ -489,7 +564,25 @@ export class RealMarketDataService {
       cachedPrices: this.priceCache.size,
       activeSubscriptions: this.subscriptions.size,
       lastUpdate,
-      supportedTokens: Object.keys(this.COINGECKO_COIN_IDS)
+      supportedTokens: Object.keys(this.COINGECKO_COIN_IDS),
+      apiHealth: this.errorManager.getAllHealthStatus(),
+      apiMetrics: this.errorManager.getAllMetrics(),
+      rateLimits: Object.fromEntries(this.errorManager.getAllRateLimits())
+    };
+  }
+
+  /**
+   * Get comprehensive error and health status
+   */
+  public getErrorStatus(): {
+    statusReport: any;
+    coinGeckoHealth: any[];
+    chainlinkHealth: any[];
+  } {
+    return {
+      statusReport: this.errorManager.getStatusReport(),
+      coinGeckoHealth: this.errorManager.getProviderHealth('coingecko'),
+      chainlinkHealth: this.errorManager.getProviderHealth('chainlink')
     };
   }
 

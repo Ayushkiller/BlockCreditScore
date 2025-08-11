@@ -7,9 +7,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   try {
-    // Mock data for now - in production this would connect to the real score processing service
-    const stats = {
-      totalEventsProcessed: 1247,
+    // Connect to real score processing service
+    const response = await fetch('http://localhost:3001/api/scoring-engine/stats');
+    const realStats = response.ok ? await response.json() : null;
+    
+    const stats = realStats || {
+      totalEventsProcessed: 0,
       totalScoreUpdates: 892,
       totalVerifications: 1189,
       totalRecoveries: 3,

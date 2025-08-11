@@ -1,4 +1,4 @@
-// Redis-based Price Caching System
+// In-Memory Price Caching System
 // Implements task 6.2: Build real price monitoring and caching system
 
 import { EventEmitter } from 'events';
@@ -6,15 +6,11 @@ import { formatError } from '../../utils/errors';
 import { getCurrentTimestamp } from '../../utils/time';
 import { RealTimePriceData } from './real-time-price-feed-manager';
 
-export interface RedisCacheConfig {
-  host: string;
-  port: number;
-  password?: string;
-  db: number;
+export interface MemoryCacheConfig {
   keyPrefix: string;
   defaultTTL: number; // seconds
-  maxRetries: number;
-  retryDelay: number; // milliseconds
+  maxEntries: number;
+  cleanupInterval: number; // milliseconds
 }
 
 export interface CacheEntry {
@@ -43,14 +39,15 @@ export interface PriceStalenessConfig {
 }
 
 /**
- * Redis-based Price Caching System
+ * In-Memory Price Caching System
  * Provides high-performance caching with TTL, staleness detection, and failover
  */
-export class RedisPriceCache extends EventEmitter {
-  private redisClient: any = null;
+export class MemoryPriceCache extends EventEmitter {
+  private cache = new Map<string, CacheEntry>();
   private isConnected = false;
-  private config: RedisCacheConfig;
+  private config: MemoryCacheConfig;
   private stalenessConfig: PriceStalenessConfig;
+  private cleanupTimer: NodeJS.Timeout | null = null;
   private stats = {
     hits: 0,
     misses: 0,
@@ -70,61 +67,29 @@ export class RedisPriceCache extends EventEmitter {
     errorThreshold: 7200 // 2 hours
   };
 
-  constructor(config: RedisCacheConfig, stalenessConfig?: PriceStalenessConfig) {
+  constructor(config: MemoryCacheConfig, stalenessConfig?: PriceStalenessConfig) {
     super();
     this.config = config;
     this.stalenessConfig = stalenessConfig || this.DEFAULT_STALENESS_CONFIG;
   }
 
   /**
-   * Initialize Redis connection
+   * Initialize in-memory cache
    */
   public async initialize(): Promise<void> {
     try {
-      // Use dynamic import for Redis to avoid bundling issues
-      const Redis = (await import('ioredis')).default;
+      this.isConnected = true;
+      
+      // Start cleanup timer
+      this.cleanupTimer = setInterval(() => {
+        this.cleanupExpiredEntries();
+      }, this.config.cleanupInterval);
 
-      this.redisClient = new Redis({
-        host: this.config.host,
-        port: this.config.port,
-        password: this.config.password,
-        db: this.config.db,
-        retryDelayOnFailover: this.config.retryDelay,
-        maxRetriesPerRequest: this.config.maxRetries,
-        lazyConnect: true,
-        keyPrefix: this.config.keyPrefix
-      });
-
-      // Set up event handlers
-      this.redisClient.on('connect', () => {
-        console.log('✅ Redis price cache connected');
-        this.isConnected = true;
-        this.emit('connected');
-      });
-
-      this.redisClient.on('error', (error: Error) => {
-        console.error('❌ Redis price cache error:', formatError(error));
-        this.isConnected = false;
-        this.emit('error', error);
-      });
-
-      this.redisClient.on('close', () => {
-        console.log('🔌 Redis price cache disconnected');
-        this.isConnected = false;
-        this.emit('disconnected');
-      });
-
-      this.redisClient.on('reconnecting', () => {
-        console.log('🔄 Redis price cache reconnecting...');
-        this.emit('reconnecting');
-      });
-
-      // Connect to Redis
-      await this.redisClient.connect();
-
-      console.log('🚀 Redis Price Cache initialized successfully');
+      console.log('✅ In-memory price cache connected');
+      this.emit('connected');
+      console.log('🚀 Memory Price Cache initialized successfully');
     } catch (error) {
-      console.error('❌ Failed to initialize Redis Price Cache:', formatError(error));
+      console.error('❌ Failed to initialize Memory Price Cache:', formatError(error));
       throw error;
     }
   }

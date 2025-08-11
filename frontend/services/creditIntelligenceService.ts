@@ -1,11 +1,31 @@
 // Credit Intelligence Service
 // This service would connect to your deployed smart contracts and backend services
+// Enhanced with task 9.1: Real API error handling and user feedback
 
 import { subscribe } from "diagnostics_channel";
 import { verify } from "crypto";
 import { custom } from "viem";
 import { profile } from "console";
 import { url } from "inspector";
+
+// API Error handling interfaces
+export interface APIErrorInfo {
+  code: string;
+  message: string;
+  statusCode: number;
+  timestamp: number;
+  provider: string;
+  retryable: boolean;
+  userMessage: string;
+}
+
+export interface ServiceHealthStatus {
+  isHealthy: boolean;
+  lastError?: APIErrorInfo;
+  errorCount: number;
+  lastSuccessTime: number;
+  degradedServices: string[];
+}
 
 export interface CreditProfile {
   address: string;
@@ -146,11 +166,565 @@ class CreditIntelligenceService {
   private web3Provider: any;
   private wsConnection: WebSocket | null = null;
   private eventListeners: Map<string, Set<Function>> = new Map();
+  private serviceHealth: ServiceHealthStatus = {
+    isHealthy: true,
+    errorCount: 0,
+    lastSuccessTime: Date.now(),
+    degradedServices: []
+  };
+  private errorCallbacks: Set<(error: APIErrorInfo) => void> = new Set();
+  private productionConfig: any = null;
+  private environmentHealth: any = null;
+  
+  // Performance monitoring
+  private performanceMetrics: Map<string, Array<{
+    timestamp: number;
+    duration: number;
+    success: boolean;
+    errorCode?: string;
+  }>> = new Map();
+  private performanceCallbacks: Set<(metrics: any) => void> = new Set();
 
   constructor() {
     this.baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
     this.contractAddress = process.env.NEXT_PUBLIC_CONTRACT_ADDRESS || '';
+    this.loadProductionConfiguration();
     this.initializeWebSocketConnection();
+  }
+
+  /**
+   * Load production environment configuration
+   */
+  private async loadProductionConfiguration(): Promise<void> {
+    try {
+      // Load environment health and configuration
+      const healthResponse = await fetch('/api/environment/health');
+      if (healthResponse.ok) {
+        this.environmentHealth = await healthResponse.json();
+      }
+
+      // Load credential statuses for timeout and retry configuration
+      const credentialsResponse = await fetch('/api/environment/credentials');
+      if (credentialsResponse.ok) {
+        const credentialsData = await credentialsResponse.json();
+        this.productionConfig = {
+          credentials: credentialsData.credentials,
+          summary: credentialsData.summary
+        };
+      }
+
+      // Load retry policies
+      const retryResponse = await fetch('/api/environment/retry-policies');
+      if (retryResponse.ok) {
+        const retryData = await retryResponse.json();
+        this.productionConfig = {
+          ...this.productionConfig,
+          retryPolicies: retryData.retryPolicies,
+          retrySummary: retryData.summary
+        };
+      }
+
+      // Load timeout configurations
+      const timeoutResponse = await fetch('/api/environment/timeouts');
+      if (timeoutResponse.ok) {
+        const timeoutData = await timeoutResponse.json();
+        this.productionConfig = {
+          ...this.productionConfig,
+          timeoutConfigurations: timeoutData.timeoutConfigurations,
+          timeoutSummary: timeoutData.summary
+        };
+      }
+
+      console.log('✅ Production configuration loaded successfully');
+    } catch (error) {
+      console.error('❌ Failed to load production configuration:', error);
+      // Continue with default configuration
+    }
+  }
+
+  /**
+   * Register error callback for API error notifications
+   */
+  public onError(callback: (error: APIErrorInfo) => void): void {
+    this.errorCallbacks.add(callback);
+  }
+
+  /**
+   * Remove error callback
+   */
+  public offError(callback: (error: APIErrorInfo) => void): void {
+    this.errorCallbacks.delete(callback);
+  }
+
+  /**
+   * Handle API errors with user-friendly messages
+   */
+  private handleAPIError(error: any, provider: string, endpoint: string): APIErrorInfo {
+    const apiError: APIErrorInfo = {
+      code: error.code || 'UNKNOWN_ERROR',
+      message: error.message || 'An unknown error occurred',
+      statusCode: error.status || error.statusCode || 0,
+      timestamp: Date.now(),
+      provider,
+      retryable: this.isRetryableError(error),
+      userMessage: this.getUserFriendlyMessage(error, provider)
+    };
+
+    // Update service health
+    this.updateServiceHealth(apiError);
+
+    // Notify error callbacks
+    this.errorCallbacks.forEach(callback => {
+      try {
+        callback(apiError);
+      } catch (callbackError) {
+        console.error('Error in error callback:', callbackError);
+      }
+    });
+
+    return apiError;
+  }
+
+  /**
+   * Update service health status
+   */
+  private updateServiceHealth(error: APIErrorInfo): void {
+    this.serviceHealth.errorCount++;
+    this.serviceHealth.lastError = error;
+    
+    // Mark service as unhealthy if too many recent errors
+    if (this.serviceHealth.errorCount > 5) {
+      this.serviceHealth.isHealthy = false;
+    }
+
+    // Add to degraded services if not already there
+    if (!this.serviceHealth.degradedServices.includes(error.provider)) {
+      this.serviceHealth.degradedServices.push(error.provider);
+    }
+  }
+
+  /**
+   * Mark successful API call
+   */
+  private markSuccess(provider: string): void {
+    this.serviceHealth.lastSuccessTime = Date.now();
+    
+    // Remove from degraded services
+    this.serviceHealth.degradedServices = this.serviceHealth.degradedServices
+      .filter(service => service !== provider);
+    
+    // Reset health if no degraded services
+    if (this.serviceHealth.degradedServices.length === 0) {
+      this.serviceHealth.isHealthy = true;
+      this.serviceHealth.errorCount = 0;
+    }
+  }
+
+  /**
+   * Check if error is retryable
+   */
+  private isRetryableError(error: any): boolean {
+    const retryableStatusCodes = [408, 429, 500, 502, 503, 504];
+    const statusCode = error.status || error.statusCode || 0;
+    
+    return retryableStatusCodes.includes(statusCode) || 
+           error.code === 'NETWORK_ERROR' ||
+           error.code === 'TIMEOUT';
+  }
+
+  /**
+   * Get user-friendly error message
+   */
+  private getUserFriendlyMessage(error: any, provider: string): string {
+    const statusCode = error.status || error.statusCode || 0;
+    
+    switch (statusCode) {
+      case 429:
+        return `${provider} is currently rate limited. Please try again in a few minutes.`;
+      case 500:
+      case 502:
+      case 503:
+      case 504:
+        return `${provider} is experiencing technical difficulties. We're working to resolve this.`;
+      case 404:
+        return `The requested data is not available from ${provider}.`;
+      case 401:
+      case 403:
+        return `Authentication issue with ${provider}. Please check your API configuration.`;
+      case 408:
+        return `Request to ${provider} timed out. Please try again.`;
+      default:
+        if (error.code === 'NETWORK_ERROR') {
+          return `Network connection issue. Please check your internet connection.`;
+        }
+        return `Unable to fetch data from ${provider}. Please try again later.`;
+    }
+  }
+
+  /**
+   * Get production retry policy for a service
+   */
+  private getRetryPolicy(serviceName: string): any {
+    if (!this.productionConfig?.retryPolicies) {
+      return {
+        maxRetries: 2,
+        baseDelayMs: 1000,
+        maxDelayMs: 10000,
+        exponentialBackoff: true,
+        jitterMs: 500
+      };
+    }
+
+    const policy = this.productionConfig.retryPolicies.find((p: any) => 
+      p.service.toLowerCase().includes(serviceName.toLowerCase())
+    );
+
+    return policy || {
+      maxRetries: 2,
+      baseDelayMs: 1000,
+      maxDelayMs: 10000,
+      exponentialBackoff: true,
+      jitterMs: 500
+    };
+  }
+
+  /**
+   * Get production timeout for a service
+   */
+  private getTimeout(serviceName: string): number {
+    if (!this.productionConfig?.timeoutConfigurations) {
+      return 8000; // Default 8 seconds
+    }
+
+    const timeoutConfig = this.productionConfig.timeoutConfigurations.find((t: any) => 
+      t.service.toLowerCase().includes(serviceName.toLowerCase())
+    );
+
+    return timeoutConfig?.timeoutMs || 8000;
+  }
+
+  /**
+   * Calculate retry delay based on production retry policy
+   */
+  private calculateRetryDelay(policy: any, attempt: number): number {
+    let delay = policy.baseDelayMs;
+    
+    if (policy.exponentialBackoff) {
+      delay = Math.min(
+        policy.baseDelayMs * Math.pow(2, attempt),
+        policy.maxDelayMs
+      );
+    }
+    
+    // Add jitter
+    if (policy.jitterMs > 0) {
+      delay += Math.random() * policy.jitterMs;
+    }
+    
+    return delay;
+  }
+
+  /**
+   * Execute API request with production-ready error handling, retry logic, and performance monitoring
+   */
+  private async executeWithErrorHandling<T>(
+    requestFn: () => Promise<T>,
+    provider: string,
+    endpoint: string,
+    serviceName?: string
+  ): Promise<T> {
+    const retryPolicy = this.getRetryPolicy(serviceName || provider);
+    const timeout = this.getTimeout(serviceName || provider);
+    const startTime = Date.now();
+    let lastError: any;
+
+    for (let attempt = 0; attempt <= retryPolicy.maxRetries; attempt++) {
+      const attemptStartTime = Date.now();
+      
+      try {
+        // Create timeout promise
+        const timeoutPromise = new Promise<never>((_, reject) => {
+          setTimeout(() => reject(new Error(`Request timeout after ${timeout}ms`)), timeout);
+        });
+
+        // Execute request with timeout
+        const result = await Promise.race([requestFn(), timeoutPromise]);
+        const duration = Date.now() - attemptStartTime;
+        
+        // Record successful performance metric
+        this.recordPerformanceMetric(provider, endpoint, duration, true);
+        this.markSuccess(provider);
+        
+        // Log successful request for performance monitoring
+        if (this.productionConfig?.timeoutConfigurations) {
+          console.log(`✅ ${provider} request successful (attempt ${attempt + 1}, ${duration}ms)`);
+        }
+        
+        return result;
+      } catch (error) {
+        const duration = Date.now() - attemptStartTime;
+        lastError = error;
+        
+        const apiError = this.handleAPIError(error, provider, endpoint);
+        
+        // Record failed performance metric
+        this.recordPerformanceMetric(provider, endpoint, duration, false, apiError.code);
+        
+        // Don't retry if error is not retryable or if it's the last attempt
+        if (!apiError.retryable || attempt === retryPolicy.maxRetries) {
+          // Log final failure
+          console.error(`❌ ${provider} request failed after ${attempt + 1} attempts (${Date.now() - startTime}ms total):`, apiError.userMessage);
+          throw apiError;
+        }
+        
+        // Calculate delay based on production retry policy
+        const delay = this.calculateRetryDelay(retryPolicy, attempt);
+        
+        console.warn(`⚠️ ${provider} request failed (attempt ${attempt + 1}/${retryPolicy.maxRetries + 1}, ${duration}ms), retrying in ${delay}ms`);
+        
+        // Wait before retry
+        await new Promise(resolve => setTimeout(resolve, delay));
+      }
+    }
+
+    throw this.handleAPIError(lastError, provider, endpoint);
+  }
+
+  /**
+   * Record performance metric for monitoring
+   */
+  private recordPerformanceMetric(
+    service: string,
+    operation: string,
+    duration: number,
+    success: boolean,
+    errorCode?: string
+  ): void {
+    const key = `${service}-${operation}`;
+    
+    if (!this.performanceMetrics.has(key)) {
+      this.performanceMetrics.set(key, []);
+    }
+    
+    const metrics = this.performanceMetrics.get(key)!;
+    metrics.push({
+      timestamp: Date.now(),
+      duration,
+      success,
+      errorCode
+    });
+    
+    // Keep only last 100 metrics per operation to prevent memory leaks
+    if (metrics.length > 100) {
+      metrics.splice(0, metrics.length - 100);
+    }
+    
+    // Notify performance callbacks
+    this.notifyPerformanceCallbacks({
+      service,
+      operation,
+      duration,
+      success,
+      errorCode,
+      timestamp: Date.now()
+    });
+    
+    // Send to performance monitoring API
+    this.sendPerformanceMetricToAPI(service, operation, duration, success, errorCode);
+  }
+
+  /**
+   * Send performance metric to monitoring API
+   */
+  private async sendPerformanceMetricToAPI(
+    service: string,
+    operation: string,
+    duration: number,
+    success: boolean,
+    errorCode?: string
+  ): Promise<void> {
+    try {
+      await fetch('/api/monitoring/performance-metrics', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          service,
+          operation,
+          duration,
+          success,
+          errorCode,
+          metadata: {
+            userAgent: navigator.userAgent,
+            timestamp: Date.now()
+          }
+        })
+      });
+    } catch (error) {
+      // Don't throw errors for monitoring failures
+      console.warn('Failed to send performance metric to API:', error);
+    }
+  }
+
+  /**
+   * Get performance statistics for a service/operation
+   */
+  public getPerformanceStats(service?: string, operation?: string): {
+    averageLatency: number;
+    successRate: number;
+    totalRequests: number;
+    errorRate: number;
+    throughput: number;
+    recentErrors: string[];
+  } {
+    let allMetrics: Array<{
+      timestamp: number;
+      duration: number;
+      success: boolean;
+      errorCode?: string;
+    }> = [];
+
+    // Collect metrics based on filters
+    for (const [key, metrics] of this.performanceMetrics.entries()) {
+      const [keyService, keyOperation] = key.split('-', 2);
+      
+      if (service && keyService !== service) continue;
+      if (operation && keyOperation !== operation) continue;
+      
+      allMetrics = allMetrics.concat(metrics);
+    }
+
+    if (allMetrics.length === 0) {
+      return {
+        averageLatency: 0,
+        successRate: 0,
+        totalRequests: 0,
+        errorRate: 0,
+        throughput: 0,
+        recentErrors: []
+      };
+    }
+
+    // Calculate statistics
+    const totalRequests = allMetrics.length;
+    const successfulRequests = allMetrics.filter(m => m.success).length;
+    const successRate = (successfulRequests / totalRequests) * 100;
+    const errorRate = 100 - successRate;
+    
+    const averageLatency = allMetrics.reduce((sum, m) => sum + m.duration, 0) / totalRequests;
+    
+    // Calculate throughput (requests per second over last 5 minutes)
+    const fiveMinutesAgo = Date.now() - (5 * 60 * 1000);
+    const recentMetrics = allMetrics.filter(m => m.timestamp >= fiveMinutesAgo);
+    const throughput = recentMetrics.length / (5 * 60); // requests per second
+    
+    // Get recent error codes
+    const recentErrors = allMetrics
+      .filter(m => !m.success && m.errorCode)
+      .slice(-10) // Last 10 errors
+      .map(m => m.errorCode!)
+      .filter((code, index, arr) => arr.indexOf(code) === index); // Unique errors
+
+    return {
+      averageLatency,
+      successRate,
+      totalRequests,
+      errorRate,
+      throughput,
+      recentErrors
+    };
+  }
+
+  /**
+   * Subscribe to performance metric updates
+   */
+  public onPerformanceMetric(callback: (metric: any) => void): () => void {
+    this.performanceCallbacks.add(callback);
+    return () => this.performanceCallbacks.delete(callback);
+  }
+
+  /**
+   * Notify performance callbacks
+   */
+  private notifyPerformanceCallbacks(metric: any): void {
+    this.performanceCallbacks.forEach(callback => {
+      try {
+        callback(metric);
+      } catch (error) {
+        console.error('Error in performance callback:', error);
+      }
+    });
+  }
+
+  /**
+   * Get comprehensive performance report
+   */
+  public getPerformanceReport(): {
+    services: { [service: string]: any };
+    overall: any;
+    timestamp: number;
+  } {
+    const services: { [service: string]: any } = {};
+    const serviceNames = new Set<string>();
+
+    // Extract unique service names
+    for (const key of this.performanceMetrics.keys()) {
+      const serviceName = key.split('-')[0];
+      serviceNames.add(serviceName);
+    }
+
+    // Generate stats for each service
+    for (const serviceName of serviceNames) {
+      services[serviceName] = this.getPerformanceStats(serviceName);
+    }
+
+    // Calculate overall stats
+    const overall = this.getPerformanceStats();
+
+    return {
+      services,
+      overall,
+      timestamp: Date.now()
+    };
+  }
+
+  /**
+   * Get current service health status
+   */
+  public getServiceHealth(): ServiceHealthStatus {
+    return { ...this.serviceHealth };
+  }
+
+  /**
+   * Get production environment health
+   */
+  public getEnvironmentHealth(): any {
+    return this.environmentHealth;
+  }
+
+  /**
+   * Get production configuration
+   */
+  public getProductionConfig(): any {
+    return this.productionConfig;
+  }
+
+  /**
+   * Refresh production configuration
+   */
+  public async refreshProductionConfig(): Promise<void> {
+    await this.loadProductionConfiguration();
+  }
+
+  /**
+   * Reset service health status
+   */
+  public resetServiceHealth(): void {
+    this.serviceHealth = {
+      isHealthy: true,
+      errorCount: 0,
+      lastSuccessTime: Date.now(),
+      degradedServices: []
+    };
   }
 
   /**
@@ -276,54 +850,78 @@ class CreditIntelligenceService {
 
   // Credit Profile Methods
   async getCreditProfile(address: string): Promise<CreditProfile | null> {
-    try {
-      // Fetch real credit profile from blockchain data manager
-      const response = await fetch(`${this.baseUrl}/api/credit-profile/${address}`);
-      if (!response.ok) return null;
+    return this.executeWithErrorHandling(
+      async () => {
+        // Fetch real credit profile from blockchain data manager
+        const response = await fetch(`${this.baseUrl}/api/credit-profile/${address}`);
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
 
-      const profile = await response.json();
+        const profile = await response.json();
 
-      // Enhance with real-time transaction data
-      const realtimeData = await this.getRealTimeTransactionData(address);
-      if (realtimeData) {
-        profile.realtimeTransactions = realtimeData.transactions;
-        profile.realtimeEvents = realtimeData.events;
-        profile.lastBlockUpdate = realtimeData.currentBlock;
-      }
+        // Enhance with real-time transaction data
+        const realtimeData = await this.getRealTimeTransactionData(address);
+        if (realtimeData) {
+          profile.realtimeTransactions = realtimeData.transactions;
+          profile.realtimeEvents = realtimeData.events;
+          profile.lastBlockUpdate = realtimeData.currentBlock;
+        }
 
-      return profile;
-    } catch (error) {
+        return profile;
+      },
+      'CreditProfileService',
+      `/api/credit-profile/${address}`,
+      'credit-profile'
+    ).catch(error => {
       console.error('Error fetching credit profile:', error);
       return null;
-    }
+    });
   }
 
   /**
    * Get real-time transaction data for an address
    */
   async getRealTimeTransactionData(address: string): Promise<any> {
-    try {
-      const response = await fetch(`${this.baseUrl}/api/blockchain/transactions/${address}`);
-      if (!response.ok) return null;
-      return await response.json();
-    } catch (error) {
+    return this.executeWithErrorHandling(
+      async () => {
+        const response = await fetch(`${this.baseUrl}/api/blockchain/transactions/${address}`);
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+        return await response.json();
+      },
+      'BlockchainDataManager',
+      `/api/blockchain/transactions/${address}`,
+      'blockchain-data'
+    ).catch(error => {
       console.error('Error fetching real-time transaction data:', error);
       return null;
-    }
+    });
   }
 
   async updateCreditProfile(address: string, data: Partial<CreditProfile>): Promise<boolean> {
-    try {
-      const response = await fetch(`${this.baseUrl}/api/credit-profile/${address}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data)
-      });
-      return response.ok;
-    } catch (error) {
+    return this.executeWithErrorHandling(
+      async () => {
+        const response = await fetch(`${this.baseUrl}/api/credit-profile/${address}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(data)
+        });
+        
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+        
+        return true;
+      },
+      'CreditProfileService',
+      `/api/credit-profile/${address}`,
+      'credit-profile'
+    ).catch(error => {
       console.error('Error updating credit profile:', error);
       return false;
-    }
+    });
   }
 
   // Analytics Methods
@@ -573,6 +1171,225 @@ class CreditIntelligenceService {
     return this.subscribe('blockchainStatus', callback);
   }
 
+  // Blockchain Verification Methods
+
+  /**
+   * Get blockchain-verified user profile
+   */
+  async getBlockchainVerifiedProfile(address: string): Promise<any> {
+    try {
+      const response = await fetch(`/api/blockchain-verification/profile/${address}`);
+      if (!response.ok) return null;
+      return await response.json();
+    } catch (error) {
+      console.error('Error fetching blockchain-verified profile:', error);
+      return null;
+    }
+  }
+
+  /**
+   * Verify wallet ownership using signature
+   */
+  async verifyWalletOwnership(address: string, message: string, signature: string): Promise<any> {
+    try {
+      const response = await fetch('/api/blockchain-verification/verify-wallet', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ address, message, signature })
+      });
+      if (!response.ok) return null;
+      return await response.json();
+    } catch (error) {
+      console.error('Error verifying wallet ownership:', error);
+      return null;
+    }
+  }
+
+  /**
+   * Export blockchain-verified data
+   */
+  async exportBlockchainVerifiedData(address: string, format: 'json' | 'csv' = 'json'): Promise<Blob | null> {
+    try {
+      const response = await fetch(`/api/blockchain-verification/export/${address}?format=${format}`);
+      if (!response.ok) return null;
+      return await response.blob();
+    } catch (error) {
+      console.error('Error exporting blockchain-verified data:', error);
+      return null;
+    }
+  }
+
+  /**
+   * Get real transaction history with blockchain verification
+   */
+  async getRealTransactionHistory(address: string, limit: number = 100): Promise<any[]> {
+    try {
+      const profile = await this.getBlockchainVerifiedProfile(address);
+      if (!profile || !profile.realTransactionHistory) return [];
+      
+      return profile.realTransactionHistory
+        .slice(0, limit)
+        .map((tx: any) => ({
+          ...tx,
+          blockExplorerUrl: `https://etherscan.io/tx/${tx.hash}`,
+          isVerified: tx.verificationStatus === 'verified'
+        }));
+    } catch (error) {
+      console.error('Error fetching real transaction history:', error);
+      return [];
+    }
+  }
+
+  /**
+   * Get blockchain proofs for verification
+   */
+  async getBlockchainProofs(address: string): Promise<any[]> {
+    try {
+      const profile = await this.getBlockchainVerifiedProfile(address);
+      if (!profile || !profile.blockchainProofs) return [];
+      
+      return profile.blockchainProofs.map((proof: any) => ({
+        ...proof,
+        verificationUrl: `https://etherscan.io/tx/${proof.data?.transaction?.hash || ''}`,
+        isValid: proof.isValid
+      }));
+    } catch (error) {
+      console.error('Error fetching blockchain proofs:', error);
+      return [];
+    }
+  }
+
+  /**
+   * Update user profile with real blockchain-verified data
+   */
+  async updateProfileWithBlockchainData(address: string): Promise<boolean> {
+    try {
+      const profile = await this.getBlockchainVerifiedProfile(address);
+      if (!profile) return false;
+
+      // Update the user's credit profile with real blockchain data
+      const creditProfile = await this.getCreditProfile(address);
+      if (creditProfile) {
+        const updatedProfile = {
+          ...creditProfile,
+          isBlockchainVerified: profile.verificationStatus === 'verified',
+          verificationTimestamp: profile.verificationTimestamp,
+          realTransactionCount: profile.realTransactionHistory?.length || 0,
+          blockchainProofCount: profile.blockchainProofs?.length || 0,
+          dataIntegrityHash: profile.dataIntegrityHash,
+          lastBlockchainUpdate: profile.lastUpdated
+        };
+
+        return await this.updateCreditProfile(address, updatedProfile);
+      }
+
+      return false;
+    } catch (error) {
+      console.error('Error updating profile with blockchain data:', error);
+      return false;
+    }
+  }
+
+  // Data Integrity Verification Methods
+
+  /**
+   * Get data integrity records for an address
+   */
+  async getDataIntegrityRecords(address: string): Promise<any> {
+    try {
+      const response = await fetch(`/api/data-integrity/records/${address}`);
+      if (!response.ok) return { records: [], statistics: null };
+      return await response.json();
+    } catch (error) {
+      console.error('Error fetching data integrity records:', error);
+      return { records: [], statistics: null };
+    }
+  }
+
+  /**
+   * Verify a data integrity record
+   */
+  async verifyDataIntegrityRecord(recordId: string): Promise<any> {
+    try {
+      const response = await fetch(`/api/data-integrity/verify/${recordId}`, {
+        method: 'POST'
+      });
+      if (!response.ok) return null;
+      return await response.json();
+    } catch (error) {
+      console.error('Error verifying data integrity record:', error);
+      return null;
+    }
+  }
+
+  /**
+   * Export data integrity records
+   */
+  async exportDataIntegrityRecords(address: string): Promise<Blob | null> {
+    try {
+      const response = await fetch(`/api/data-integrity/export/${address}`);
+      if (!response.ok) return null;
+      return await response.blob();
+    } catch (error) {
+      console.error('Error exporting data integrity records:', error);
+      return null;
+    }
+  }
+
+  /**
+   * Create computation verification with blockchain inputs
+   */
+  async createComputationVerification(
+    inputData: any,
+    outputData: any,
+    computationMethod: string,
+    blockchainInputs: any[]
+  ): Promise<any> {
+    try {
+      const response = await fetch('/api/data-integrity/create-computation-verification', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          inputData,
+          outputData,
+          computationMethod,
+          blockchainInputs
+        })
+      });
+      if (!response.ok) return null;
+      return await response.json();
+    } catch (error) {
+      console.error('Error creating computation verification:', error);
+      return null;
+    }
+  }
+
+  /**
+   * Track historical data with blockchain references
+   */
+  async trackHistoricalData(
+    value: any,
+    blockNumber: number,
+    transactionHash?: string
+  ): Promise<any> {
+    try {
+      const response = await fetch('/api/data-integrity/track-historical-data', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          value,
+          blockNumber,
+          transactionHash
+        })
+      });
+      if (!response.ok) return null;
+      return await response.json();
+    } catch (error) {
+      console.error('Error tracking historical data:', error);
+      return null;
+    }
+  }
+
   /**
    * Get current blockchain connection status
    */
@@ -649,14 +1466,17 @@ class CreditIntelligenceService {
    * Get real-time price data using integrated price feed service
    */
   async getRealTimePrice(symbol: string): Promise<any> {
-    try {
-      const response = await fetch(`${this.baseUrl}/api/market-data/price/${symbol}`);
-      if (!response.ok) return null;
-      return await response.json();
-    } catch (error) {
-      console.error('Error fetching real-time price:', error);
-      return null;
-    }
+    return this.executeWithErrorHandling(
+      async () => {
+        const response = await fetch(`${this.baseUrl}/api/market-data/price/${symbol}`);
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+        return await response.json();
+      },
+      'market-data-service',
+      `/api/market-data/price/${symbol}`
+    );
   }
 
   /**

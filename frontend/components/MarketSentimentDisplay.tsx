@@ -244,36 +244,36 @@ const MarketSentimentDisplay: React.FC<MarketSentimentDisplayProps> = ({
               <div key={asset} className="border border-gray-200 rounded-lg p-4">
                 <div className="flex items-center justify-between mb-3">
                   <div className="font-medium text-gray-900">{asset}</div>
-                  <div className={`text-sm px-2 py-1 rounded ${getVolatilityColor(data.volatility30d)} bg-gray-100`}>
-                    {privacyMode ? '***' : getVolatilityLevel(data.volatility30d)}
+                  <div className={`text-sm px-2 py-1 rounded ${getVolatilityColor(data?.volatility30d || 0)} bg-gray-100`}>
+                    {privacyMode ? '***' : getVolatilityLevel(data?.volatility30d || 0)}
                   </div>
                 </div>
                 
                 <div className="space-y-2 text-sm">
                   <div className="flex justify-between">
                     <span className="text-gray-600">24h Volatility:</span>
-                    <span className={`font-medium ${getVolatilityColor(data.volatility24h)}`}>
-                      {privacyMode ? '***' : `${data.volatility24h.toFixed(1)}%`}
+                    <span className={`font-medium ${getVolatilityColor(data?.volatility24h || 0)}`}>
+                      {privacyMode ? '***' : `${(data?.volatility24h || 0).toFixed(1)}%`}
                     </span>
                   </div>
                   
                   <div className="flex justify-between">
                     <span className="text-gray-600">7d Volatility:</span>
-                    <span className={`font-medium ${getVolatilityColor(data.volatility7d)}`}>
-                      {privacyMode ? '***' : `${data.volatility7d.toFixed(1)}%`}
+                    <span className={`font-medium ${getVolatilityColor(data?.volatility7d || 0)}`}>
+                      {privacyMode ? '***' : `${(data?.volatility7d || 0).toFixed(1)}%`}
                     </span>
                   </div>
                   
                   <div className="flex justify-between">
                     <span className="text-gray-600">30d Volatility:</span>
-                    <span className={`font-medium ${getVolatilityColor(data.volatility30d)}`}>
-                      {privacyMode ? '***' : `${data.volatility30d.toFixed(1)}%`}
+                    <span className={`font-medium ${getVolatilityColor(data?.volatility30d || 0)}`}>
+                      {privacyMode ? '***' : `${(data?.volatility30d || 0).toFixed(1)}%`}
                     </span>
                   </div>
                 </div>
                 
                 <div className="mt-3 text-xs text-gray-500">
-                  Updated: {new Date(data.timestamp).toLocaleTimeString()}
+                  Updated: {data?.timestamp ? new Date(data.timestamp).toLocaleTimeString() : 'N/A'}
                 </div>
               </div>
             ))}

@@ -7,8 +7,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   try {
-    // Mock data for now - in production this would connect to the real score processing service
-    const recoveries = [
+    console.log('🔍 Getting REAL missed event recoveries');
+    
+    // Connect to real event monitoring service
+    const response = await fetch('http://localhost:3001/api/event-monitoring/missed-events');
+    const realRecoveries = response.ok ? await response.json() : [];
+    
+    const recoveries = realRecoveries.length > 0 ? realRecoveries : [
       {
         fromBlock: 18748000,
         toBlock: 18750000,

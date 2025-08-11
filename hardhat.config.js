@@ -29,6 +29,10 @@ module.exports = {
       accounts: process.env.PRIVATE_KEY ? [process.env.PRIVATE_KEY] : [],
       chainId: 11155111,
       gasPrice: 20000000000, // 20 gwei
+      timeout: 60000, // 60 seconds
+      httpHeaders: {
+        "User-Agent": "CryptoVault-Credit-Intelligence/1.0.0"
+      }
     },
   },
   gasReporter: {
@@ -44,4 +48,7 @@ module.exports = {
     cache: "./cache",
     artifacts: "./artifacts",
   },
+  sourcify: {
+    enabled: true
+  }
 };

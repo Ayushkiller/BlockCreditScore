@@ -17,6 +17,7 @@ import {
   RefreshCw
 } from 'lucide-react';
 import { useDeployment } from '../contexts/DeploymentContext';
+import APIHealthMonitor from './APIHealthMonitor';
 
 interface BlockchainConnectionStatus {
   isConnected: boolean;
@@ -142,6 +143,9 @@ const StatusOverview: React.FC = () => {
     recentAlerts: []
   });
 
+  const [performanceMetrics, setPerformanceMetrics] = useState<any>(null);
+  const [systemHealth, setSystemHealth] = useState<any>(null);
+
   // Fetch blockchain connection status
   useEffect(() => {
     const fetchBlockchainStatus = async () => {
@@ -218,6 +222,46 @@ const StatusOverview: React.FC = () => {
 
     fetchVolatilityStatus();
     const interval = setInterval(fetchVolatilityStatus, 30000); // Update every 30 seconds
+
+    return () => clearInterval(interval);
+  }, []);
+
+  // Fetch performance metrics
+  useEffect(() => {
+    const fetchPerformanceMetrics = async () => {
+      try {
+        const response = await fetch('/api/monitoring/performance-metrics?type=summary');
+        if (response.ok) {
+          const data = await response.json();
+          setPerformanceMetrics(data);
+        }
+      } catch (error) {
+        console.error('Failed to fetch performance metrics:', error);
+      }
+    };
+
+    fetchPerformanceMetrics();
+    const interval = setInterval(fetchPerformanceMetrics, 15000); // Update every 15 seconds
+
+    return () => clearInterval(interval);
+  }, []);
+
+  // Fetch system health
+  useEffect(() => {
+    const fetchSystemHealth = async () => {
+      try {
+        const response = await fetch('/api/monitoring/system-health?detailed=false');
+        if (response.ok) {
+          const data = await response.json();
+          setSystemHealth(data);
+        }
+      } catch (error) {
+        console.error('Failed to fetch system health:', error);
+      }
+    };
+
+    fetchSystemHealth();
+    const interval = setInterval(fetchSystemHealth, 20000); // Update every 20 seconds
 
     return () => clearInterval(interval);
   }, []);
@@ -355,6 +399,26 @@ const StatusOverview: React.FC = () => {
         `Latest Block: ${monitoringData.latestBlock || 'Unknown'}`,
         `Gas Price: ${monitoringData.gasPrice || '0'} gwei`,
         `Balance: ${monitoringData.balance || '0'} ETH`
+      ]
+    },
+    {
+      title: 'Performance Monitoring',
+      status: performanceMetrics ? 
+        `${performanceMetrics.overallHealth?.charAt(0).toUpperCase() + performanceMetrics.overallHealth?.slice(1) || 'Unknown'}` : 'Loading',
+      icon: performanceMetrics?.overallHealth === 'healthy' ? CheckCircle :
+            performanceMetrics?.overallHealth === 'degraded' ? AlertTriangle : AlertCircle,
+      color: performanceMetrics?.overallHealth === 'healthy' ? 'success' :
+             performanceMetrics?.overallHealth === 'degraded' ? 'warning' : 'error',
+      details: [
+        `Services: ${Object.keys(performanceMetrics?.services || {}).length}`,
+        `Avg Latency: ${performanceMetrics ? 
+          (Object.values(performanceMetrics.services).reduce((sum: number, service: any) => sum + service.avgLatency, 0) / 
+           Object.keys(performanceMetrics.services).length).toFixed(0) : '0'}ms`,
+        `Total Throughput: ${performanceMetrics ? 
+          Object.values(performanceMetrics.services).reduce((sum: number, service: any) => sum + service.throughput, 0).toFixed(1) : '0'} ops/sec`,
+        `Active Alerts: ${performanceMetrics?.activeAlerts?.length || 0}`,
+        `System Health: ${systemHealth?.overallStatus || 'Unknown'}`,
+        `Uptime: ${systemHealth?.uptime ? Math.floor(systemHealth.uptime / 1000 / 60) + 'm' : 'N/A'}`
       ]
     }
   ];
@@ -632,6 +696,138 @@ const StatusOverview: React.FC = () => {
           </div>
         </div>
       )}
+
+      {/* Real-time Performance Metrics */}
+      {performanceMetrics && (
+        <div className="card">
+          <h3 className="text-xl font-semibold text-gray-900 mb-6">Real-time Performance Metrics</h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            {Object.entries(performanceMetrics.services).map(([serviceName, serviceData]: [string, any]) => (
+              <div key={serviceName} className={`p-4 rounded-lg border ${
+                serviceData.health === 'healthy' ? 'border-green-200 bg-green-50' :
+                serviceData.health === 'degraded' ? 'border-yellow-200 bg-yellow-50' :
+                'border-red-200 bg-red-50'
+              }`}>
+                <div className="flex items-center justify-between mb-2">
+                  <h4 className="font-medium text-gray-900 text-sm capitalize">
+                    {serviceName.replace('-', ' ')}
+                  </h4>
+                  <div className={`w-2 h-2 rounded-full ${
+                    serviceData.health === 'healthy' ? 'bg-green-500' :
+                    serviceData.health === 'degraded' ? 'bg-yellow-500' : 'bg-red-500'
+                  }`}></div>
+                </div>
+                <div className="space-y-1 text-xs">
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Latency:</span>
+                    <span className="font-medium">{serviceData.avgLatency.toFixed(0)}ms</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Throughput:</span>
+                    <span className="font-medium">{serviceData.throughput.toFixed(1)}/s</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Error Rate:</span>
+                    <span className={`font-medium ${
+                      serviceData.errorRate < 2 ? 'text-green-600' :
+                      serviceData.errorRate < 5 ? 'text-yellow-600' : 'text-red-600'
+                    }`}>
+                      {serviceData.errorRate.toFixed(1)}%
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Availability:</span>
+                    <span className="font-medium">{serviceData.availability.toFixed(1)}%</span>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* System Resource Usage */}
+      {systemHealth && systemHealth.systemMetrics && (
+        <div className="card">
+          <h3 className="text-xl font-semibold text-gray-900 mb-6">System Resource Usage</h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            <div className="text-center">
+              <div className="flex items-center justify-center mb-2">
+                <div className={`w-16 h-16 rounded-full flex items-center justify-center ${
+                  systemHealth.systemMetrics.cpuUsage > 80 ? 'bg-red-100' :
+                  systemHealth.systemMetrics.cpuUsage > 60 ? 'bg-yellow-100' : 'bg-green-100'
+                }`}>
+                  <span className={`text-lg font-bold ${
+                    systemHealth.systemMetrics.cpuUsage > 80 ? 'text-red-600' :
+                    systemHealth.systemMetrics.cpuUsage > 60 ? 'text-yellow-600' : 'text-green-600'
+                  }`}>
+                    {systemHealth.systemMetrics.cpuUsage.toFixed(0)}%
+                  </span>
+                </div>
+              </div>
+              <div className="font-medium text-gray-900">CPU Usage</div>
+              <div className="text-sm text-gray-600">
+                {systemHealth.systemMetrics.cpuUsage > 80 ? 'High' :
+                 systemHealth.systemMetrics.cpuUsage > 60 ? 'Medium' : 'Normal'}
+              </div>
+            </div>
+
+            <div className="text-center">
+              <div className="flex items-center justify-center mb-2">
+                <div className={`w-16 h-16 rounded-full flex items-center justify-center ${
+                  systemHealth.systemMetrics.memoryUsage > 85 ? 'bg-red-100' :
+                  systemHealth.systemMetrics.memoryUsage > 70 ? 'bg-yellow-100' : 'bg-green-100'
+                }`}>
+                  <span className={`text-lg font-bold ${
+                    systemHealth.systemMetrics.memoryUsage > 85 ? 'text-red-600' :
+                    systemHealth.systemMetrics.memoryUsage > 70 ? 'text-yellow-600' : 'text-green-600'
+                  }`}>
+                    {systemHealth.systemMetrics.memoryUsage.toFixed(0)}%
+                  </span>
+                </div>
+              </div>
+              <div className="font-medium text-gray-900">Memory Usage</div>
+              <div className="text-sm text-gray-600">
+                {systemHealth.systemMetrics.memoryUsage > 85 ? 'High' :
+                 systemHealth.systemMetrics.memoryUsage > 70 ? 'Medium' : 'Normal'}
+              </div>
+            </div>
+
+            <div className="text-center">
+              <div className="flex items-center justify-center mb-2">
+                <div className={`w-16 h-16 rounded-full flex items-center justify-center ${
+                  systemHealth.systemMetrics.networkLatency > 50 ? 'bg-red-100' :
+                  systemHealth.systemMetrics.networkLatency > 30 ? 'bg-yellow-100' : 'bg-green-100'
+                }`}>
+                  <span className={`text-lg font-bold ${
+                    systemHealth.systemMetrics.networkLatency > 50 ? 'text-red-600' :
+                    systemHealth.systemMetrics.networkLatency > 30 ? 'text-yellow-600' : 'text-green-600'
+                  }`}>
+                    {systemHealth.systemMetrics.networkLatency.toFixed(0)}
+                  </span>
+                </div>
+              </div>
+              <div className="font-medium text-gray-900">Network Latency</div>
+              <div className="text-sm text-gray-600">milliseconds</div>
+            </div>
+
+            <div className="text-center">
+              <div className="flex items-center justify-center mb-2">
+                <div className="w-16 h-16 rounded-full flex items-center justify-center bg-blue-100">
+                  <span className="text-lg font-bold text-blue-600">
+                    {systemHealth.systemMetrics.activeConnections}
+                  </span>
+                </div>
+              </div>
+              <div className="font-medium text-gray-900">Active Connections</div>
+              <div className="text-sm text-gray-600">real-time</div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* API Health Monitor */}
+      <APIHealthMonitor />
 
       {/* Recent Activity */}
       {deployments.length > 0 && (
