@@ -62,14 +62,12 @@ interface ChainReorganization {
 
 interface RealTimeEventMonitorProps {
   userAddress?: string | null;
-  privacyMode?: boolean;
   showNotifications?: boolean;
   maxEvents?: number;
 }
 
 const RealTimeEventMonitor: React.FC<RealTimeEventMonitorProps> = ({
   userAddress,
-  privacyMode = false,
   showNotifications = true,
   maxEvents = 50
 }) => {
@@ -290,19 +288,19 @@ const RealTimeEventMonitor: React.FC<RealTimeEventMonitorProps> = ({
             <div className="bg-blue-50 p-3 rounded-lg">
               <div className="text-sm font-medium text-gray-600">Current Block</div>
               <div className="text-lg font-bold text-blue-900">
-                {privacyMode ? '***' : monitoringStatus.currentBlock.toLocaleString()}
+                {monitoringStatus.currentBlock.toLocaleString()}
               </div>
             </div>
             <div className="bg-green-50 p-3 rounded-lg">
               <div className="text-sm font-medium text-gray-600">Events/sec</div>
               <div className="text-lg font-bold text-green-900">
-                {privacyMode ? '***' : monitoringStatus.eventsPerSecond.toFixed(1)}
+                {monitoringStatus.eventsPerSecond.toFixed(1)}
               </div>
             </div>
             <div className="bg-purple-50 p-3 rounded-lg">
               <div className="text-sm font-medium text-gray-600">Confirmed</div>
               <div className="text-lg font-bold text-purple-900">
-                {privacyMode ? '***' : monitoringStatus.eventsConfirmed.toLocaleString()}
+                {monitoringStatus.eventsConfirmed.toLocaleString()}
               </div>
             </div>
             <div className="bg-yellow-50 p-3 rounded-lg">
@@ -401,7 +399,7 @@ const RealTimeEventMonitor: React.FC<RealTimeEventMonitorProps> = ({
                         )}
                       </div>
                       <div className="text-sm text-gray-600">
-                        Block {privacyMode ? '***' : event.blockNumber} • 
+                        Block {event.blockNumber} • 
                         {event.isConfirmed ? (
                           <span className="text-green-600 ml-1">
                             <CheckCircle className="w-3 h-3 inline mr-1" />
@@ -422,18 +420,16 @@ const RealTimeEventMonitor: React.FC<RealTimeEventMonitorProps> = ({
                       <div className="text-sm text-gray-600">
                         {new Date(event.timestamp * 1000).toLocaleTimeString()}
                       </div>
-                      {!privacyMode && (
-                        <a
-                          href={`https://etherscan.io/tx/${event.transactionHash}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-xs text-blue-600 hover:text-blue-800 flex items-center"
-                        >
-                          <Hash className="w-3 h-3 mr-1" />
-                          View Tx
-                          <ExternalLink className="w-3 h-3 ml-1" />
-                        </a>
-                      )}
+                      <a
+                        href={`https://etherscan.io/tx/${event.transactionHash}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-xs text-blue-600 hover:text-blue-800 flex items-center"
+                      >
+                        <Hash className="w-3 h-3 mr-1" />
+                        View Tx
+                        <ExternalLink className="w-3 h-3 ml-1" />
+                      </a>
                     </div>
                   </div>
                 </div>
@@ -463,7 +459,7 @@ const RealTimeEventMonitor: React.FC<RealTimeEventMonitorProps> = ({
             <div className="bg-blue-50 p-4 rounded-lg">
               <div className="text-sm font-medium text-gray-600 mb-1">Current Block</div>
               <div className="text-2xl font-bold text-blue-900">
-                {privacyMode ? '***' : monitoringStatus.currentBlock.toLocaleString()}
+                {monitoringStatus.currentBlock.toLocaleString()}
               </div>
               <div className="text-xs text-blue-700 mt-1">
                 Latest confirmed block
@@ -473,7 +469,7 @@ const RealTimeEventMonitor: React.FC<RealTimeEventMonitorProps> = ({
             <div className="bg-yellow-50 p-4 rounded-lg">
               <div className="text-sm font-medium text-gray-600 mb-1">Pending Events</div>
               <div className="text-2xl font-bold text-yellow-900">
-                {privacyMode ? '***' : (monitoringStatus.eventsDetected - monitoringStatus.eventsConfirmed)}
+                {(monitoringStatus.eventsDetected - monitoringStatus.eventsConfirmed)}
               </div>
               <div className="text-xs text-yellow-700 mt-1">
                 Awaiting confirmation
@@ -483,7 +479,7 @@ const RealTimeEventMonitor: React.FC<RealTimeEventMonitorProps> = ({
             <div className="bg-green-50 p-4 rounded-lg">
               <div className="text-sm font-medium text-gray-600 mb-1">Avg Confirmation</div>
               <div className="text-2xl font-bold text-green-900">
-                {privacyMode ? '***' : `${monitoringStatus.averageConfirmationTime.toFixed(1)}s`}
+                {`${monitoringStatus.averageConfirmationTime.toFixed(1)}s`}
               </div>
               <div className="text-xs text-green-700 mt-1">
                 Average time to confirm
