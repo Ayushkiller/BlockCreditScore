@@ -7,6 +7,10 @@ import { errorHandler } from './middleware/errorHandler';
 import { blockchainService } from './services/blockchainService';
 import { scoreCalculator } from './services/scoreCalculator';
 import { databaseService } from './services/databaseService';
+import { BenchmarkingEngine } from './services/benchmarkingEngine';
+import { CompetitivePositioningEngine } from './services/competitivePositioningEngine';
+import { RealTimeBenchmarkingEngine } from './services/realTimeBenchmarkingEngine';
+import { PredictiveAnalyticsEngine } from './services/predictiveAnalyticsEngine';
 
 // Load environment variables
 dotenv.config();
@@ -21,7 +25,7 @@ app.use(express.urlencoded({ extended: true }));
 
 // Health check endpoint
 app.get('/health', (req, res) => {
-  res.json({ status: 'OK', timestamp: new Date().toISOString() });
+  res.json({ status: 'OK', timestamp: new Date().toISOString(), version: 'fixed' });
 });
 
 // Core API endpoints
@@ -37,7 +41,19 @@ app.get('/api', (req, res) => {
       score: '/api/score/:address',
       batch: '/api/score/batch',
       history: '/api/score/:address/history',
-      refresh: '/api/score/:address/refresh'
+      refresh: '/api/score/:address/refresh',
+      benchmarking: '/api/benchmarking/:address',
+      'competitive-positioning': '/api/competitive-positioning/:address',
+      'market-position': '/api/market-position/:address',
+      'competitive-analysis': '/api/competitive-analysis/:address',
+      'real-time-benchmark': '/api/real-time-benchmark/:address',
+      'benchmark-update': '/api/benchmark-update/:address',
+      'benchmark-stats': '/api/benchmark-stats',
+      'benchmark-config': '/api/benchmark-config',
+      'score-forecast': '/api/score-forecast/:address',
+      'behavioral-prediction': '/api/behavioral-prediction/:address',
+      'prediction-accuracy': '/api/prediction-accuracy/:predictionId',
+      'model-performance': '/api/model-performance'
     }
   });
 });
@@ -70,7 +86,9 @@ app.get('/api/docs', (req, res) => {
           path: '/api/score/:address',
           description: 'Get the credit score for a specific Ethereum address',
           parameters: {
-            address: 'Ethereum address (required)'
+            address: 'Ethereum address (required)',
+            includeForecast: 'Include score forecast and trend prediction (optional, true/false)',
+            includeBehavioralPrediction: 'Include behavioral trend prediction (optional, true/false)'
           },
           example: {
             request: 'GET /api/score/0x742d35Cc6634C0532925a3b8D4C9db96C4b4d8b6',
@@ -186,24 +204,98 @@ app.get('/api/score/:address', async (req, res) => {
     const cachedScore = await databaseService.getCachedScore(address);
     
     if (cachedScore && databaseService.isCacheFresh(cachedScore)) {
+      // For cached scores, we still need to generate detailed breakdown
+      // since the database only stores basic breakdown
+      const metrics = await blockchainService.getUserMetrics(address);
+      const detailedBreakdown = scoreCalculator.generateScoreBreakdown(address, metrics);
+      
+      // Check if forecasting is requested
+      const { includeForecast, includeBehavioralPrediction } = req.query;
+      const responseData: any = {
+        address: cachedScore.address,
+        score: cachedScore.score,
+        confidence: 85, // Default confidence for cached scores
+        breakdown: detailedBreakdown,
+        timestamp: cachedScore.lastUpdated,
+        cached: true
+      };
+      
+      // Add forecasting data if requested (even for cached scores)
+      if (includeForecast === 'true') {
+        try {
+          // Check for cached forecast first
+          const cachedForecast = await databaseService.getLatestScoreForecast(address);
+          
+          if (cachedForecast && databaseService.isCacheFresh({ lastUpdated: cachedForecast.lastUpdated } as any)) {
+            responseData.forecast = cachedForecast;
+          } else {
+            // Generate new forecast
+            const creditScore = scoreCalculator.calculateCreditScore(address, metrics);
+            const scoreHistory = await databaseService.getEnhancedScoreHistory(address, 100);
+            const forecast = await PredictiveAnalyticsEngine.generateScoreForecast(
+              address,
+              creditScore,
+              metrics,
+              scoreHistory
+            );
+            
+            await databaseService.saveScoreForecast(forecast);
+            responseData.forecast = forecast;
+          }
+        } catch (forecastError) {
+          console.error('Error generating forecast for cached score:', forecastError);
+          responseData.forecastError = 'Failed to generate forecast';
+        }
+      }
+      
+      // Add behavioral prediction if requested
+      if (includeBehavioralPrediction === 'true') {
+        try {
+          // Check for cached behavioral prediction first
+          const cachedBehavioralPrediction = await databaseService.getLatestBehavioralTrendPrediction(address);
+          
+          if (cachedBehavioralPrediction && databaseService.isCacheFresh({ lastUpdated: cachedBehavioralPrediction.lastUpdated } as any)) {
+            responseData.behavioralPrediction = cachedBehavioralPrediction;
+          } else {
+            // Generate new behavioral prediction
+            const scoreHistory = await databaseService.getEnhancedScoreHistory(address, 100);
+            const behavioralPrediction = await PredictiveAnalyticsEngine.generateBehavioralTrendPrediction(
+              address,
+              metrics,
+              scoreHistory
+            );
+            
+            await databaseService.saveBehavioralTrendPrediction(behavioralPrediction);
+            responseData.behavioralPrediction = behavioralPrediction;
+          }
+        } catch (behavioralError) {
+          console.error('Error generating behavioral prediction for cached score:', behavioralError);
+          responseData.behavioralPredictionError = 'Failed to generate behavioral prediction';
+        }
+      }
+      
       return res.json({
         success: true,
-        data: {
-          address: cachedScore.address,
-          score: cachedScore.score,
-          breakdown: cachedScore.breakdown,
-          timestamp: cachedScore.lastUpdated,
-          cached: true
-        }
+        data: responseData
       });
     }
     
     // Calculate new score
     const metrics = await blockchainService.getUserMetrics(address);
     
+    // Debug: Log metrics for troubleshooting
+    console.log('Metrics for address', address, ':', {
+      totalTransactions: metrics.totalTransactions,
+      totalVolume: metrics.totalVolume,
+      accountAge: metrics.accountAge,
+      stakingBalance: metrics.stakingBalance,
+      defiProtocolsUsed: metrics.defiProtocolsUsed.length
+    });
+    
     // Validate metrics for scoring
     const validation = scoreCalculator.validateMetricsForScoring(metrics);
     if (!validation.isValid) {
+      console.log('Validation failed for address', address, ':', validation.reasons);
       return res.status(400).json({
         success: false,
         error: 'INSUFFICIENT_DATA',
@@ -214,17 +306,64 @@ app.get('/api/score/:address', async (req, res) => {
     
     // Calculate and save score
     const creditScore = scoreCalculator.calculateCreditScore(address, metrics);
+    const detailedBreakdown = scoreCalculator.generateScoreBreakdown(address, metrics);
     await databaseService.saveScore(creditScore);
+    
+    // Check if forecasting is requested
+    const { includeForecast, includeBehavioralPrediction } = req.query;
+    const responseData: any = {
+      address: creditScore.address,
+      score: creditScore.score,
+      confidence: creditScore.confidence,
+      breakdown: detailedBreakdown,
+      timestamp: creditScore.timestamp,
+      cached: false
+    };
+    
+    // Add forecasting data if requested
+    if (includeForecast === 'true') {
+      try {
+        const scoreHistory = await databaseService.getEnhancedScoreHistory(address, 100);
+        const forecast = await PredictiveAnalyticsEngine.generateScoreForecast(
+          address,
+          creditScore,
+          metrics,
+          scoreHistory
+        );
+        
+        // Save forecast to database
+        await databaseService.saveScoreForecast(forecast);
+        
+        responseData.forecast = forecast;
+      } catch (forecastError) {
+        console.error('Error generating forecast:', forecastError);
+        responseData.forecastError = 'Failed to generate forecast';
+      }
+    }
+    
+    // Add behavioral prediction if requested
+    if (includeBehavioralPrediction === 'true') {
+      try {
+        const scoreHistory = await databaseService.getEnhancedScoreHistory(address, 100);
+        const behavioralPrediction = await PredictiveAnalyticsEngine.generateBehavioralTrendPrediction(
+          address,
+          metrics,
+          scoreHistory
+        );
+        
+        // Save behavioral prediction to database
+        await databaseService.saveBehavioralTrendPrediction(behavioralPrediction);
+        
+        responseData.behavioralPrediction = behavioralPrediction;
+      } catch (behavioralError) {
+        console.error('Error generating behavioral prediction:', behavioralError);
+        responseData.behavioralPredictionError = 'Failed to generate behavioral prediction';
+      }
+    }
     
     return res.json({
       success: true,
-      data: {
-        address: creditScore.address,
-        score: creditScore.score,
-        breakdown: creditScore.breakdown,
-        timestamp: creditScore.timestamp,
-        cached: false
-      }
+      data: responseData
     });
     
   } catch (error) {
@@ -451,9 +590,9 @@ app.post('/api/score/:address/refresh', async (req, res) => {
       data: {
         address: creditScore.address,
         score: creditScore.score,
-        breakdown: creditScore.breakdown,
+        confidence: creditScore.confidence,
+        breakdown: breakdown,
         timestamp: creditScore.timestamp,
-        detailedBreakdown: breakdown,
         refreshed: true
       }
     });
@@ -464,6 +603,279 @@ app.post('/api/score/:address/refresh', async (req, res) => {
       success: false,
       error: 'REFRESH_ERROR',
       message: 'Failed to refresh credit score',
+      details: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+});
+
+// GET /api/benchmarking/:address - Get comprehensive benchmarking data
+app.get('/api/benchmarking/:address', async (req, res) => {
+  try {
+    const { address } = req.params;
+    const { includeCompetitivePositioning } = req.query;
+    
+    // Validate address format
+    if (!ethers.isAddress(address)) {
+      return res.status(400).json({
+        success: false,
+        error: 'INVALID_ADDRESS',
+        message: 'Invalid Ethereum address format'
+      });
+    }
+    
+    // Get user metrics and credit score
+    const metrics = await blockchainService.getUserMetrics(address);
+    const validation = scoreCalculator.validateMetricsForScoring(metrics);
+    
+    if (!validation.isValid) {
+      return res.status(400).json({
+        success: false,
+        error: 'INSUFFICIENT_DATA',
+        message: 'Insufficient data for benchmarking analysis',
+        details: validation.reasons
+      });
+    }
+    
+    const creditScore = scoreCalculator.calculateCreditScore(address, metrics);
+    const scoreBreakdown = scoreCalculator.generateScoreBreakdown(address, metrics);
+    
+    // Generate benchmarking data
+    const benchmarkingData = await BenchmarkingEngine.generateBenchmarkingData(
+      address,
+      creditScore,
+      scoreBreakdown,
+      metrics,
+      undefined,
+      includeCompetitivePositioning === 'true'
+    );
+    
+    return res.json({
+      success: true,
+      data: benchmarkingData
+    });
+    
+  } catch (error) {
+    console.error('Error getting benchmarking data:', error);
+    return res.status(500).json({
+      success: false,
+      error: 'BENCHMARKING_ERROR',
+      message: 'Failed to generate benchmarking data',
+      details: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+});
+
+// GET /api/competitive-positioning/:address - Get competitive positioning analysis
+app.get('/api/competitive-positioning/:address', async (req, res) => {
+  try {
+    const { address } = req.params;
+    
+    // Validate address format
+    if (!ethers.isAddress(address)) {
+      return res.status(400).json({
+        success: false,
+        error: 'INVALID_ADDRESS',
+        message: 'Invalid Ethereum address format'
+      });
+    }
+    
+    // Check for cached competitive positioning data first
+    const cachedData = await databaseService.getLatestCompetitivePositioningData(address);
+    
+    if (cachedData && databaseService.isCacheFresh({ lastUpdated: cachedData.timestamp } as any)) {
+      return res.json({
+        success: true,
+        data: cachedData,
+        cached: true
+      });
+    }
+    
+    // Generate new competitive positioning analysis
+    const metrics = await blockchainService.getUserMetrics(address);
+    const validation = scoreCalculator.validateMetricsForScoring(metrics);
+    
+    if (!validation.isValid) {
+      return res.status(400).json({
+        success: false,
+        error: 'INSUFFICIENT_DATA',
+        message: 'Insufficient data for competitive positioning analysis',
+        details: validation.reasons
+      });
+    }
+    
+    const creditScore = scoreCalculator.calculateCreditScore(address, metrics);
+    const scoreBreakdown = scoreCalculator.generateScoreBreakdown(address, metrics);
+    
+    // Generate benchmarking data for context
+    const benchmarkingData = await BenchmarkingEngine.generateBenchmarkingData(
+      address,
+      creditScore,
+      scoreBreakdown,
+      metrics
+    );
+    
+    // Generate competitive positioning
+    const competitivePositioning = await CompetitivePositioningEngine.generateCompetitivePositioning(
+      address,
+      creditScore,
+      scoreBreakdown,
+      metrics,
+      benchmarkingData
+    );
+    
+    // Save to database
+    await databaseService.saveCompetitivePositioningData(competitivePositioning);
+    
+    return res.json({
+      success: true,
+      data: competitivePositioning,
+      cached: false
+    });
+    
+  } catch (error) {
+    console.error('Error getting competitive positioning:', error);
+    return res.status(500).json({
+      success: false,
+      error: 'COMPETITIVE_POSITIONING_ERROR',
+      message: 'Failed to generate competitive positioning analysis',
+      details: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+});
+
+// GET /api/market-position/:address - Get market position analysis
+app.get('/api/market-position/:address', async (req, res) => {
+  try {
+    const { address } = req.params;
+    
+    // Validate address format
+    if (!ethers.isAddress(address)) {
+      return res.status(400).json({
+        success: false,
+        error: 'INVALID_ADDRESS',
+        message: 'Invalid Ethereum address format'
+      });
+    }
+    
+    // Get competitive positioning data
+    const cachedData = await databaseService.getLatestCompetitivePositioningData(address);
+    
+    if (cachedData && databaseService.isCacheFresh({ lastUpdated: cachedData.timestamp } as any)) {
+      return res.json({
+        success: true,
+        data: {
+          address: cachedData.address,
+          marketPosition: cachedData.marketPosition,
+          trendComparison: cachedData.trendComparison,
+          timestamp: cachedData.timestamp
+        },
+        cached: true
+      });
+    }
+    
+    // Generate new analysis if no cached data
+    const metrics = await blockchainService.getUserMetrics(address);
+    const validation = scoreCalculator.validateMetricsForScoring(metrics);
+    
+    if (!validation.isValid) {
+      return res.status(400).json({
+        success: false,
+        error: 'INSUFFICIENT_DATA',
+        message: 'Insufficient data for market position analysis',
+        details: validation.reasons
+      });
+    }
+    
+    const creditScore = scoreCalculator.calculateCreditScore(address, metrics);
+    const scoreBreakdown = scoreCalculator.generateScoreBreakdown(address, metrics);
+    
+    const benchmarkingData = await BenchmarkingEngine.generateBenchmarkingData(
+      address,
+      creditScore,
+      scoreBreakdown,
+      metrics
+    );
+    
+    const competitivePositioning = await CompetitivePositioningEngine.generateCompetitivePositioning(
+      address,
+      creditScore,
+      scoreBreakdown,
+      metrics,
+      benchmarkingData
+    );
+    
+    await databaseService.saveCompetitivePositioningData(competitivePositioning);
+    
+    return res.json({
+      success: true,
+      data: {
+        address: competitivePositioning.address,
+        marketPosition: competitivePositioning.marketPosition,
+        trendComparison: competitivePositioning.trendComparison,
+        timestamp: Math.floor(Date.now() / 1000)
+      },
+      cached: false
+    });
+    
+  } catch (error) {
+    console.error('Error getting market position:', error);
+    return res.status(500).json({
+      success: false,
+      error: 'MARKET_POSITION_ERROR',
+      message: 'Failed to get market position analysis',
+      details: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+});
+
+// GET /api/competitive-analysis/:address - Get competitive analysis data
+app.get('/api/competitive-analysis/:address', async (req, res) => {
+  try {
+    const { address } = req.params;
+    const { type } = req.query; // advantages, opportunities, threats, recommendations
+    
+    // Validate address format
+    if (!ethers.isAddress(address)) {
+      return res.status(400).json({
+        success: false,
+        error: 'INVALID_ADDRESS',
+        message: 'Invalid Ethereum address format'
+      });
+    }
+    
+    let data: any = {};
+    
+    if (!type || type === 'advantages') {
+      data.competitiveAdvantages = await databaseService.getCompetitiveAdvantages(address);
+    }
+    
+    if (!type || type === 'opportunities') {
+      data.marketOpportunities = await databaseService.getMarketOpportunities(address);
+    }
+    
+    if (!type || type === 'threats') {
+      data.competitiveThreats = await databaseService.getCompetitiveThreats(address);
+    }
+    
+    if (!type || type === 'recommendations') {
+      data.strategicRecommendations = await databaseService.getStrategicRecommendations(address);
+    }
+    
+    return res.json({
+      success: true,
+      data: {
+        address,
+        ...data,
+        timestamp: Math.floor(Date.now() / 1000)
+      }
+    });
+    
+  } catch (error) {
+    console.error('Error getting competitive analysis:', error);
+    return res.status(500).json({
+      success: false,
+      error: 'COMPETITIVE_ANALYSIS_ERROR',
+      message: 'Failed to get competitive analysis data',
       details: error instanceof Error ? error.message : 'Unknown error'
     });
   }
@@ -539,16 +951,513 @@ app.get('/api/blockchain/metrics/:address', async (req, res) => {
 // Error handling middleware (must be last)
 app.use(errorHandler);
 
+// Real-time Benchmarking API Endpoints
+
+// GET /api/real-time-benchmark/:address - Get real-time benchmark data
+app.get('/api/real-time-benchmark/:address', async (req, res) => {
+  try {
+    const { address } = req.params;
+    
+    // Validate address format
+    if (!ethers.isAddress(address)) {
+      return res.status(400).json({
+        success: false,
+        error: 'INVALID_ADDRESS',
+        message: 'Invalid Ethereum address format'
+      });
+    }
+    
+    // Get user metrics and credit score
+    const metrics = await blockchainService.getUserMetrics(address);
+    const validation = scoreCalculator.validateMetricsForScoring(metrics);
+    
+    if (!validation.isValid) {
+      return res.status(400).json({
+        success: false,
+        error: 'INSUFFICIENT_DATA',
+        message: 'Insufficient data for real-time benchmarking',
+        details: validation.reasons
+      });
+    }
+    
+    const creditScore = scoreCalculator.calculateCreditScore(address, metrics);
+    const scoreBreakdown = scoreCalculator.generateScoreBreakdown(address, metrics);
+    
+    // Get real-time benchmark data
+    const realTimeBenchmarkData = await RealTimeBenchmarkingEngine.getRealTimeBenchmarkData(
+      address,
+      creditScore,
+      scoreBreakdown,
+      metrics
+    );
+    
+    return res.json({
+      success: true,
+      data: {
+        address: realTimeBenchmarkData.address,
+        peerGroupId: realTimeBenchmarkData.peerGroupId,
+        overallPercentile: realTimeBenchmarkData.overallPercentile,
+        componentPercentiles: JSON.parse(realTimeBenchmarkData.componentPercentiles),
+        lastUpdated: realTimeBenchmarkData.lastUpdated,
+        updateFrequency: realTimeBenchmarkData.updateFrequency,
+        isStale: realTimeBenchmarkData.isStale,
+        benchmarkTimestamp: realTimeBenchmarkData.benchmarkTimestamp
+      }
+    });
+    
+  } catch (error) {
+    console.error('Error getting real-time benchmark data:', error);
+    return res.status(500).json({
+      success: false,
+      error: 'REAL_TIME_BENCHMARK_ERROR',
+      message: 'Failed to get real-time benchmark data',
+      details: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+});
+
+// GET /api/score-forecast/:address - Get score forecast and trend prediction
+app.get('/api/score-forecast/:address', async (req, res) => {
+  try {
+    const { address } = req.params;
+    
+    // Validate address format
+    if (!ethers.isAddress(address)) {
+      return res.status(400).json({
+        success: false,
+        error: 'INVALID_ADDRESS',
+        message: 'Invalid Ethereum address format'
+      });
+    }
+    
+    // Check for cached forecast first
+    const cachedForecast = await databaseService.getLatestScoreForecast(address);
+    
+    if (cachedForecast && databaseService.isCacheFresh({ lastUpdated: cachedForecast.lastUpdated } as any)) {
+      return res.json({
+        success: true,
+        data: cachedForecast,
+        cached: true
+      });
+    }
+    
+    // Generate new forecast
+    const metrics = await blockchainService.getUserMetrics(address);
+    const validation = scoreCalculator.validateMetricsForScoring(metrics);
+    
+    if (!validation.isValid) {
+      return res.status(400).json({
+        success: false,
+        error: 'INSUFFICIENT_DATA',
+        message: 'Insufficient data for score forecasting',
+        details: validation.reasons
+      });
+    }
+    
+    const creditScore = scoreCalculator.calculateCreditScore(address, metrics);
+    const scoreHistory = await databaseService.getEnhancedScoreHistory(address, 100);
+    
+    // Generate score forecast
+    const forecast = await PredictiveAnalyticsEngine.generateScoreForecast(
+      address,
+      creditScore,
+      metrics,
+      scoreHistory
+    );
+    
+    // Save forecast to database
+    await databaseService.saveScoreForecast(forecast);
+    
+    return res.json({
+      success: true,
+      data: forecast,
+      cached: false
+    });
+    
+  } catch (error) {
+    console.error('Error getting score forecast:', error);
+    return res.status(500).json({
+      success: false,
+      error: 'FORECAST_ERROR',
+      message: 'Failed to generate score forecast',
+      details: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+});
+
+// GET /api/behavioral-prediction/:address - Get behavioral trend prediction
+app.get('/api/behavioral-prediction/:address', async (req, res) => {
+  try {
+    const { address } = req.params;
+    
+    // Validate address format
+    if (!ethers.isAddress(address)) {
+      return res.status(400).json({
+        success: false,
+        error: 'INVALID_ADDRESS',
+        message: 'Invalid Ethereum address format'
+      });
+    }
+    
+    // Check for cached prediction first
+    const cachedPrediction = await databaseService.getLatestBehavioralTrendPrediction(address);
+    
+    if (cachedPrediction && databaseService.isCacheFresh({ lastUpdated: cachedPrediction.lastUpdated } as any)) {
+      return res.json({
+        success: true,
+        data: cachedPrediction,
+        cached: true
+      });
+    }
+    
+    // Generate new behavioral prediction
+    const metrics = await blockchainService.getUserMetrics(address);
+    const validation = scoreCalculator.validateMetricsForScoring(metrics);
+    
+    if (!validation.isValid) {
+      return res.status(400).json({
+        success: false,
+        error: 'INSUFFICIENT_DATA',
+        message: 'Insufficient data for behavioral prediction',
+        details: validation.reasons
+      });
+    }
+    
+    const scoreHistory = await databaseService.getEnhancedScoreHistory(address, 100);
+    
+    // Generate behavioral trend prediction
+    const prediction = await PredictiveAnalyticsEngine.generateBehavioralTrendPrediction(
+      address,
+      metrics,
+      scoreHistory
+    );
+    
+    // Save prediction to database
+    await databaseService.saveBehavioralTrendPrediction(prediction);
+    
+    return res.json({
+      success: true,
+      data: prediction,
+      cached: false
+    });
+    
+  } catch (error) {
+    console.error('Error getting behavioral prediction:', error);
+    return res.status(500).json({
+      success: false,
+      error: 'BEHAVIORAL_PREDICTION_ERROR',
+      message: 'Failed to generate behavioral prediction',
+      details: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+});
+
+// POST /api/prediction-accuracy/:predictionId - Track prediction accuracy
+app.post('/api/prediction-accuracy/:predictionId', async (req, res) => {
+  try {
+    const { predictionId } = req.params;
+    const { actualScore } = req.body;
+    
+    // Validate input
+    if (!predictionId || typeof actualScore !== 'number') {
+      return res.status(400).json({
+        success: false,
+        error: 'INVALID_INPUT',
+        message: 'Prediction ID and actual score are required'
+      });
+    }
+    
+    if (actualScore < 0 || actualScore > 1000) {
+      return res.status(400).json({
+        success: false,
+        error: 'INVALID_SCORE',
+        message: 'Actual score must be between 0 and 1000'
+      });
+    }
+    
+    // Track prediction accuracy
+    const accuracyResult = await PredictiveAnalyticsEngine.trackPredictionAccuracy(
+      predictionId,
+      '', // Address will be retrieved from the prediction
+      actualScore
+    );
+    
+    return res.json({
+      success: true,
+      data: accuracyResult
+    });
+    
+  } catch (error) {
+    console.error('Error tracking prediction accuracy:', error);
+    return res.status(500).json({
+      success: false,
+      error: 'ACCURACY_TRACKING_ERROR',
+      message: 'Failed to track prediction accuracy',
+      details: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+});
+
+// GET /api/model-performance - Get model performance metrics
+app.get('/api/model-performance', async (req, res) => {
+  try {
+    const { model } = req.query;
+    
+    // Get model performance metrics
+    const performance = await PredictiveAnalyticsEngine.getModelPerformance(
+      model as string
+    );
+    
+    return res.json({
+      success: true,
+      data: {
+        models: performance,
+        total: performance.length
+      }
+    });
+    
+  } catch (error) {
+    console.error('Error getting model performance:', error);
+    return res.status(500).json({
+      success: false,
+      error: 'MODEL_PERFORMANCE_ERROR',
+      message: 'Failed to get model performance metrics',
+      details: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+});
+
+// POST /api/benchmark-update/:address - Trigger benchmark update
+app.post('/api/benchmark-update/:address', async (req, res) => {
+  try {
+    const { address } = req.params;
+    const { priority = 'MEDIUM', delay = 0 } = req.body;
+    
+    // Validate address format
+    if (!ethers.isAddress(address)) {
+      return res.status(400).json({
+        success: false,
+        error: 'INVALID_ADDRESS',
+        message: 'Invalid Ethereum address format'
+      });
+    }
+    
+    // Validate priority
+    if (!['HIGH', 'MEDIUM', 'LOW'].includes(priority)) {
+      return res.status(400).json({
+        success: false,
+        error: 'INVALID_PRIORITY',
+        message: 'Priority must be HIGH, MEDIUM, or LOW'
+      });
+    }
+    
+    // Schedule benchmark update
+    const jobId = await RealTimeBenchmarkingEngine.scheduleBenchmarkUpdate(
+      address,
+      priority,
+      delay
+    );
+    
+    return res.json({
+      success: true,
+      data: {
+        address,
+        jobId,
+        priority,
+        delay,
+        message: 'Benchmark update scheduled successfully'
+      }
+    });
+    
+  } catch (error) {
+    console.error('Error scheduling benchmark update:', error);
+    return res.status(500).json({
+      success: false,
+      error: 'BENCHMARK_UPDATE_ERROR',
+      message: 'Failed to schedule benchmark update',
+      details: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+});
+
+// GET /api/benchmark-stats - Get real-time benchmarking statistics
+app.get('/api/benchmark-stats', async (req, res) => {
+  try {
+    const stats = await RealTimeBenchmarkingEngine.getRealTimeBenchmarkStats();
+    
+    return res.json({
+      success: true,
+      data: stats
+    });
+    
+  } catch (error) {
+    console.error('Error getting benchmark stats:', error);
+    return res.status(500).json({
+      success: false,
+      error: 'BENCHMARK_STATS_ERROR',
+      message: 'Failed to get benchmark statistics',
+      details: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+});
+
+// GET /api/benchmark-config - Get benchmarking configuration
+app.get('/api/benchmark-config', async (req, res) => {
+  try {
+    const config = RealTimeBenchmarkingEngine.getConfig();
+    
+    return res.json({
+      success: true,
+      data: config
+    });
+    
+  } catch (error) {
+    console.error('Error getting benchmark config:', error);
+    return res.status(500).json({
+      success: false,
+      error: 'BENCHMARK_CONFIG_ERROR',
+      message: 'Failed to get benchmark configuration',
+      details: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+});
+
+// PUT /api/benchmark-config - Update benchmarking configuration
+app.put('/api/benchmark-config', async (req, res) => {
+  try {
+    const { updateFrequency, staleThreshold, batchSize, maxRetries, priorityThresholds } = req.body;
+    
+    const configUpdate: any = {};
+    
+    if (updateFrequency !== undefined) {
+      if (typeof updateFrequency !== 'number' || updateFrequency < 60) {
+        return res.status(400).json({
+          success: false,
+          error: 'INVALID_UPDATE_FREQUENCY',
+          message: 'Update frequency must be a number >= 60 seconds'
+        });
+      }
+      configUpdate.updateFrequency = updateFrequency;
+    }
+    
+    if (staleThreshold !== undefined) {
+      if (typeof staleThreshold !== 'number' || staleThreshold < 300) {
+        return res.status(400).json({
+          success: false,
+          error: 'INVALID_STALE_THRESHOLD',
+          message: 'Stale threshold must be a number >= 300 seconds'
+        });
+      }
+      configUpdate.staleThreshold = staleThreshold;
+    }
+    
+    if (batchSize !== undefined) {
+      if (typeof batchSize !== 'number' || batchSize < 1 || batchSize > 1000) {
+        return res.status(400).json({
+          success: false,
+          error: 'INVALID_BATCH_SIZE',
+          message: 'Batch size must be a number between 1 and 1000'
+        });
+      }
+      configUpdate.batchSize = batchSize;
+    }
+    
+    if (maxRetries !== undefined) {
+      if (typeof maxRetries !== 'number' || maxRetries < 0 || maxRetries > 10) {
+        return res.status(400).json({
+          success: false,
+          error: 'INVALID_MAX_RETRIES',
+          message: 'Max retries must be a number between 0 and 10'
+        });
+      }
+      configUpdate.maxRetries = maxRetries;
+    }
+    
+    if (priorityThresholds !== undefined) {
+      if (typeof priorityThresholds !== 'object' || 
+          typeof priorityThresholds.high !== 'number' || 
+          typeof priorityThresholds.medium !== 'number') {
+        return res.status(400).json({
+          success: false,
+          error: 'INVALID_PRIORITY_THRESHOLDS',
+          message: 'Priority thresholds must be an object with high and medium number values'
+        });
+      }
+      configUpdate.priorityThresholds = priorityThresholds;
+    }
+    
+    // Update configuration
+    RealTimeBenchmarkingEngine.updateConfig(configUpdate);
+    
+    const updatedConfig = RealTimeBenchmarkingEngine.getConfig();
+    
+    return res.json({
+      success: true,
+      data: {
+        message: 'Configuration updated successfully',
+        config: updatedConfig
+      }
+    });
+    
+  } catch (error) {
+    console.error('Error updating benchmark config:', error);
+    return res.status(500).json({
+      success: false,
+      error: 'BENCHMARK_CONFIG_UPDATE_ERROR',
+      message: 'Failed to update benchmark configuration',
+      details: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+});
+
+// POST /api/benchmark-refresh-stale - Force refresh all stale benchmarks
+app.post('/api/benchmark-refresh-stale', async (req, res) => {
+  try {
+    const refreshedCount = await RealTimeBenchmarkingEngine.forceRefreshStaleBenchmarks();
+    
+    return res.json({
+      success: true,
+      data: {
+        message: 'Stale benchmark refresh initiated',
+        refreshedCount
+      }
+    });
+    
+  } catch (error) {
+    console.error('Error refreshing stale benchmarks:', error);
+    return res.status(500).json({
+      success: false,
+      error: 'BENCHMARK_REFRESH_ERROR',
+      message: 'Failed to refresh stale benchmarks',
+      details: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+});
+
 // Initialize database and start server
 async function startServer() {
   try {
     await initializeDatabase();
     console.log('Database initialized successfully');
     
+    // Initialize real-time benchmarking engine
+    RealTimeBenchmarkingEngine.initialize({
+      updateFrequency: 300, // 5 minutes
+      staleThreshold: 900,  // 15 minutes
+      batchSize: 50,
+      maxRetries: 3,
+      priorityThresholds: {
+        high: 5,   // 5 percentile change
+        medium: 2  // 2 percentile change
+      }
+    });
+    console.log('Real-time benchmarking engine initialized');
+    
     app.listen(PORT, () => {
       console.log(`CryptoScore API server running on port ${PORT}`);
       console.log(`Health check: http://localhost:${PORT}/health`);
       console.log(`API info: http://localhost:${PORT}/api`);
+      console.log(`Real-time benchmarking: ACTIVE`);
     });
   } catch (error) {
     console.error('Failed to start server:', error);
