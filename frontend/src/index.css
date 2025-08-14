@@ -1,0 +1,75 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply bg-gray-50 text-gray-900;
+  }
+}
+
+@layer components {
+  .btn-primary {
+    @apply bg-primary-600 hover:bg-primary-700 text-white font-medium py-2 px-4 rounded-lg transition-colors duration-200;
+  }
+  
+  .btn-secondary {
+    @apply bg-gray-200 hover:bg-gray-300 text-gray-800 font-medium py-2 px-4 rounded-lg transition-colors duration-200;
+  }
+  
+  .card {
+    @apply bg-white rounded-lg shadow-md p-6;
+  }
+  
+  .input-field {
+    @apply w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent;
+  }
+  
+  /* Risk Assessment Components */
+  .line-clamp-2 {
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+  
+  /* Animation for notification toasts */
+  @keyframes slide-in-right {
+    from {
+      transform: translateX(100%);
+      opacity: 0;
+    }
+    to {
+      transform: translateX(0);
+      opacity: 1;
+    }
+  }
+  
+  .animate-slide-in-right {
+    animation: slide-in-right 0.3s ease-out;
+  }
+  
+  /* Success, warning, danger colors for compatibility */
+  .bg-success-50 { @apply bg-green-50; }
+  .bg-success-100 { @apply bg-green-100; }
+  .bg-success-500 { @apply bg-green-500; }
+  .bg-success-600 { @apply bg-green-600; }
+  .text-success-500 { @apply text-green-500; }
+  .text-success-600 { @apply text-green-600; }
+  .text-success-700 { @apply text-green-700; }
+  .border-success-200 { @apply border-green-200; }
+  
+  .bg-warning-50 { @apply bg-yellow-50; }
+  .bg-warning-100 { @apply bg-yellow-100; }
+  .bg-warning-500 { @apply bg-yellow-500; }
+  .bg-warning-600 { @apply bg-yellow-600; }
+  .text-warning-500 { @apply text-yellow-500; }
+  .text-warning-600 { @apply text-yellow-600; }
+  .text-warning-700 { @apply text-yellow-700; }
+  .border-warning-200 { @apply border-yellow-200; }
+  
+  .bg-danger-50 { @apply bg-red-50; }
+  .bg-danger-500 { @apply bg-red-500; }
+  .text-danger-500 { @apply text-red-500; }
+  .border-danger-200 { @apply border-red-200; }
+}
