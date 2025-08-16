@@ -221,44 +221,38 @@ export default function InteractiveScoreBreakdown({ breakdown, totalScore }: Int
       </div>
 
       {/* Visual Overview */}
-      <div className="card p-8 bg-gradient-to-br from-slate-50/80 to-slate-100/80 border-slate-200/60 backdrop-blur-sm">
-        <div className="flex items-center space-x-3 mb-6">
-          <span className="text-2xl">⚖️</span>
-          <h3 className="text-xl font-bold text-foreground">Component Weights</h3>
-        </div>
-        <p className="text-sm text-muted-foreground mb-6">
-          Each component has a different impact on your overall score. Hover over the bars to highlight the corresponding detailed card below.
-        </p>
-        <div className="space-y-4">
+      <div className="card p-6">
+        <h3 className="text-lg font-semibold text-foreground mb-4">Component Weights</h3>
+        <div className="space-y-3">
           {sortedComponents.map(([name, component]) => {
             const weight = (component.weight || 0) * 100
             const score = component.score || 0
             const isHighlighted = hoveredComponent === name
             
             return (
-              <div key={name} className="space-y-3 group">
+              <div key={name} className="space-y-2">
                 <div className="flex justify-between items-center">
-                  <span className={`font-semibold transition-all duration-300 ${
-                    isHighlighted ? 'text-primary text-lg' : 'text-foreground'
+                  <span className={`font-medium ${
+                    isHighlighted ? 'text-primary' : 'text-foreground'
                   }`}>
                     {name.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase())}
                   </span>
-                  <div className="flex items-center space-x-3">
-                    <span className={`text-sm font-medium ${
+                  <div className="flex items-center space-x-2 text-sm">
+                    <span className={`font-medium ${
                       score >= 80 ? 'text-success-600' : 
                       score >= 60 ? 'text-warning-600' : 'text-danger-600'
                     }`}>
                       {score}/100
                     </span>
-                    <span className="text-sm text-muted-foreground font-medium">
-                      {Math.round(weight)}% weight
+                    <span className="text-muted-foreground">
+                      ({Math.round(weight)}%)
                     </span>
                   </div>
                 </div>
-                <div className="w-full bg-muted rounded-full h-3 overflow-hidden">
+                <div className="w-full bg-muted rounded-full h-2">
                   <div 
-                    className={`h-3 rounded-full transition-all duration-500 ${
-                      isHighlighted ? 'bg-primary shadow-lg scale-y-110' : 'bg-primary/80'
+                    className={`h-2 rounded-full transition-all duration-300 ${
+                      isHighlighted ? 'bg-primary' : 'bg-primary/70'
                     }`}
                     style={{ width: `${weight}%` }}
                   />
@@ -285,40 +279,31 @@ export default function InteractiveScoreBreakdown({ breakdown, totalScore }: Int
       </div>
 
       {/* Summary */}
-      <div className="card p-8 bg-gradient-to-br from-primary/8 via-primary/5 to-primary/10 border-primary/30 backdrop-blur-sm">
-        <div className="text-center space-y-6">
-          <div className="flex items-center justify-center space-x-3">
-            <span className="text-3xl">📈</span>
-            <h3 className="text-2xl font-bold text-foreground">Your Score Summary</h3>
-          </div>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
-            <div className="text-center group">
-              <div className="text-4xl font-black text-primary mb-2 group-hover:scale-110 transition-transform">
-                {totalScore}
-              </div>
-              <div className="text-sm font-semibold text-foreground">Total Score</div>
-              <div className="text-xs text-muted-foreground mt-1">Out of 1000</div>
+      <div className="card p-6">
+        <div className="text-center space-y-4">
+          <h3 className="text-lg font-semibold text-foreground">Score Summary</h3>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div className="text-center">
+              <div className="text-2xl font-bold text-primary mb-1">{totalScore}</div>
+              <div className="text-sm text-muted-foreground">Total Score</div>
             </div>
-            <div className="text-center group">
-              <div className="text-4xl font-black text-success-600 mb-2 group-hover:scale-110 transition-transform">
+            <div className="text-center">
+              <div className="text-2xl font-bold text-success-600 mb-1">
                 {Object.values(breakdown).filter(c => (c.score || 0) >= 80).length}
               </div>
-              <div className="text-sm font-semibold text-foreground">Strong Areas</div>
-              <div className="text-xs text-muted-foreground mt-1">Components ≥80</div>
+              <div className="text-sm text-muted-foreground">Strong Areas</div>
             </div>
-            <div className="text-center group">
-              <div className="text-4xl font-black text-warning-600 mb-2 group-hover:scale-110 transition-transform">
+            <div className="text-center">
+              <div className="text-2xl font-bold text-warning-600 mb-1">
                 +{Object.values(breakdown).reduce((sum, c) => sum + (c.improvementPotential || 0), 0)}
               </div>
-              <div className="text-sm font-semibold text-foreground">Growth Potential</div>
-              <div className="text-xs text-muted-foreground mt-1">Possible points</div>
+              <div className="text-sm text-muted-foreground">Growth Potential</div>
             </div>
-            <div className="text-center group">
-              <div className="text-4xl font-black text-blue-600 mb-2 group-hover:scale-110 transition-transform">
+            <div className="text-center">
+              <div className="text-2xl font-bold text-blue-600 mb-1">
                 {Math.round(Object.values(breakdown).reduce((sum, c) => sum + (c.confidence || 0), 0) / Object.values(breakdown).length)}%
               </div>
-              <div className="text-sm font-semibold text-foreground">Avg Confidence</div>
-              <div className="text-xs text-muted-foreground mt-1">Data reliability</div>
+              <div className="text-sm text-muted-foreground">Avg Confidence</div>
             </div>
           </div>
         </div>

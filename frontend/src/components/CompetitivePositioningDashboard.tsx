@@ -216,8 +216,44 @@ function CompetitiveAdvantagesPanel({ advantages, keyStrengths, marketPosition, 
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
             </svg>
           </div>
-          <h4 className="text-lg font-medium text-gray-900 mb-2">Building Your Advantages</h4>
-          <p className="text-gray-600">Continue building your on-chain activity to develop competitive advantages</p>
+          <h4 className="text-lg font-medium text-gray-900 mb-3">Build Competitive Advantages</h4>
+          <div className="space-y-3">
+            <div className="flex items-start space-x-3 p-3 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg border border-blue-200">
+              <div className="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center flex-shrink-0">
+                <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                </svg>
+              </div>
+              <div>
+                <div className="text-sm font-semibold text-blue-900 mb-1">Increase Transaction Volume</div>
+                <div className="text-xs text-blue-700">Move into the top 25% by increasing your monthly transaction count</div>
+              </div>
+            </div>
+            
+            <div className="flex items-start space-x-3 p-3 bg-gradient-to-r from-green-50 to-emerald-50 rounded-lg border border-green-200">
+              <div className="w-8 h-8 bg-green-500 rounded-full flex items-center justify-center flex-shrink-0">
+                <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                </svg>
+              </div>
+              <div>
+                <div className="text-sm font-semibold text-green-900 mb-1">Diversify Protocol Usage</div>
+                <div className="text-xs text-green-700">Use 3+ different DeFi protocols to show sophisticated engagement</div>
+              </div>
+            </div>
+            
+            <div className="flex items-start space-x-3 p-3 bg-gradient-to-r from-purple-50 to-pink-50 rounded-lg border border-purple-200">
+              <div className="w-8 h-8 bg-purple-500 rounded-full flex items-center justify-center flex-shrink-0">
+                <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1" />
+                </svg>
+              </div>
+              <div>
+                <div className="text-sm font-semibold text-purple-900 mb-1">Maintain Higher Balances</div>
+                <div className="text-xs text-purple-700">Keep larger token balances to demonstrate financial stability</div>
+              </div>
+            </div>
+          </div>
         </div>
       )}
     </div>

@@ -71,7 +71,7 @@
   }
   
   .btn-primary {
-    @apply btn bg-primary text-primary-foreground hover:bg-primary/90 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5;
+    @apply btn bg-primary text-primary-foreground hover:bg-primary/90;
     @apply h-10 px-6 py-2;
   }
   
@@ -100,7 +100,7 @@
   
   /* Modern Card System */
   .card {
-    @apply rounded-xl border bg-card text-card-foreground shadow-sm hover:shadow-md transition-all duration-200;
+    @apply rounded-lg border bg-card text-card-foreground shadow-sm hover:shadow-md transition-shadow duration-200;
   }
   
   .card-header {
@@ -132,34 +132,9 @@
     @apply input;
   }
   
-  /* Glass morphism effects */
-  .glass {
-    @apply backdrop-blur-md bg-white/10 border border-white/20;
-  }
-  
-  .glass-dark {
-    @apply backdrop-blur-md bg-black/10 border border-black/20;
-  }
-  
-  /* Gradient backgrounds */
-  .gradient-primary {
-    background: linear-gradient(135deg, hsl(var(--primary)) 0%, hsl(var(--primary)) 100%);
-  }
-  
-  .gradient-secondary {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  }
-  
-  .gradient-success {
-    background: linear-gradient(135deg, #4ade80 0%, #22c55e 100%);
-  }
-  
-  .gradient-warning {
-    background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%);
-  }
-  
-  .gradient-danger {
-    background: linear-gradient(135deg, #f87171 0%, #ef4444 100%);
+  /* Simplified gradient backgrounds */
+  .bg-gradient-primary {
+    @apply bg-primary;
   }
   
   /* Enhanced animations */
@@ -234,44 +209,22 @@
   
   /* Status colors */
   .status-success {
-    @apply bg-green-50 text-green-700 border-green-200 dark:bg-green-900/20 dark:text-green-400 dark:border-green-800;
+    @apply bg-success-50 text-success-700 border-success-200;
   }
   
   .status-warning {
-    @apply bg-yellow-50 text-yellow-700 border-yellow-200 dark:bg-yellow-900/20 dark:text-yellow-400 dark:border-yellow-800;
+    @apply bg-warning-50 text-warning-700 border-warning-200;
   }
   
   .status-danger {
-    @apply bg-red-50 text-red-700 border-red-200 dark:bg-red-900/20 dark:text-red-400 dark:border-red-800;
+    @apply bg-danger-50 text-danger-700 border-danger-200;
   }
   
   .status-info {
-    @apply bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-900/20 dark:text-blue-400 dark:border-blue-800;
+    @apply bg-primary-50 text-primary-700 border-primary-200;
   }
   
-  /* Legacy compatibility */
-  .bg-success-50 { @apply bg-green-50 dark:bg-green-900/20; }
-  .bg-success-100 { @apply bg-green-100 dark:bg-green-900/30; }
-  .bg-success-500 { @apply bg-green-500; }
-  .bg-success-600 { @apply bg-green-600; }
-  .text-success-500 { @apply text-green-500; }
-  .text-success-600 { @apply text-green-600; }
-  .text-success-700 { @apply text-green-700 dark:text-green-400; }
-  .border-success-200 { @apply border-green-200 dark:border-green-800; }
-  
-  .bg-warning-50 { @apply bg-yellow-50 dark:bg-yellow-900/20; }
-  .bg-warning-100 { @apply bg-yellow-100 dark:bg-yellow-900/30; }
-  .bg-warning-500 { @apply bg-yellow-500; }
-  .bg-warning-600 { @apply bg-yellow-600; }
-  .text-warning-500 { @apply text-yellow-500; }
-  .text-warning-600 { @apply text-yellow-600; }
-  .text-warning-700 { @apply text-yellow-700 dark:text-yellow-400; }
-  .border-warning-200 { @apply border-yellow-200 dark:border-yellow-800; }
-  
-  .bg-danger-50 { @apply bg-red-50 dark:bg-red-900/20; }
-  .bg-danger-500 { @apply bg-red-500; }
-  .text-danger-500 { @apply text-red-500; }
-  .border-danger-200 { @apply border-red-200 dark:border-red-800; }
+
 }
 /*
  Enhanced UI Animations */

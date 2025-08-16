@@ -21,22 +21,22 @@ function RecommendationCard({ recommendation, index, onAction }: RecommendationC
     switch (priority) {
       case 'HIGH':
         return {
-          color: 'border-red-200 bg-red-50',
-          badge: 'bg-red-100 text-red-800 border-red-200',
+          color: 'border-danger-200 bg-danger-50',
+          badge: 'bg-danger-100 text-danger-800 border-danger-200',
           icon: '🔥',
           urgency: 'Urgent'
         }
       case 'MEDIUM':
         return {
-          color: 'border-yellow-200 bg-yellow-50',
-          badge: 'bg-yellow-100 text-yellow-800 border-yellow-200',
+          color: 'border-warning-200 bg-warning-50',
+          badge: 'bg-warning-100 text-warning-800 border-warning-200',
           icon: '⚡',
           urgency: 'Important'
         }
       case 'LOW':
         return {
-          color: 'border-green-200 bg-green-50',
-          badge: 'bg-green-100 text-green-800 border-green-200',
+          color: 'border-success-200 bg-success-50',
+          badge: 'bg-success-100 text-success-800 border-success-200',
           icon: '💡',
           urgency: 'Optional'
         }
@@ -53,13 +53,13 @@ function RecommendationCard({ recommendation, index, onAction }: RecommendationC
   const getDifficultyConfig = (difficulty: string) => {
     switch (difficulty) {
       case 'EASY':
-        return { color: 'text-green-600', icon: '🟢', label: 'Easy' }
+        return { color: 'text-success-600', icon: '🟢', label: 'Easy' }
       case 'MEDIUM':
-        return { color: 'text-yellow-600', icon: '🟡', label: 'Medium' }
+        return { color: 'text-warning-600', icon: '🟡', label: 'Medium' }
       case 'HARD':
-        return { color: 'text-red-600', icon: '🔴', label: 'Hard' }
+        return { color: 'text-danger-600', icon: '🔴', label: 'Hard' }
       default:
-        return { color: 'text-gray-600', icon: '⚪', label: 'Unknown' }
+        return { color: 'text-muted-foreground', icon: '⚪', label: 'Unknown' }
     }
   }
 
@@ -123,19 +123,19 @@ function RecommendationCard({ recommendation, index, onAction }: RecommendationC
       </div>
 
       {/* Metrics */}
-      <div className="grid grid-cols-3 gap-4 mb-4">
-        <div className="text-center p-3 bg-white/50 rounded-lg">
-          <div className="text-lg font-bold text-primary">+{recommendation.expectedScoreImpact}</div>
-          <div className="text-xs text-muted-foreground">Score Impact</div>
+      <div className="flex justify-between items-center text-sm mb-4 p-3 bg-white/30 rounded-lg">
+        <div className="text-center">
+          <div className="font-semibold text-primary">+{recommendation.expectedScoreImpact}</div>
+          <div className="text-xs text-muted-foreground">Impact</div>
         </div>
-        <div className="text-center p-3 bg-white/50 rounded-lg">
-          <div className={`text-lg font-bold ${difficultyConfig.color}`}>
-            {difficultyConfig.icon}
+        <div className="text-center">
+          <div className={`font-semibold ${difficultyConfig.color}`}>
+            {difficultyConfig.label}
           </div>
-          <div className="text-xs text-muted-foreground">{difficultyConfig.label}</div>
+          <div className="text-xs text-muted-foreground">Difficulty</div>
         </div>
-        <div className="text-center p-3 bg-white/50 rounded-lg">
-          <div className="text-lg font-bold text-foreground">
+        <div className="text-center">
+          <div className="font-semibold text-foreground">
             {recommendation.timeToImpact.replace('_', ' ')}
           </div>
           <div className="text-xs text-muted-foreground">Timeline</div>
@@ -220,9 +220,9 @@ function RecommendationCard({ recommendation, index, onAction }: RecommendationC
                     <div className="flex items-start justify-between mb-2">
                       <h5 className="font-medium text-foreground">{action.description}</h5>
                       <span className={`px-2 py-1 text-xs rounded-full ${
-                        action.riskLevel === 'LOW' ? 'bg-green-100 text-green-700' :
-                        action.riskLevel === 'MEDIUM' ? 'bg-yellow-100 text-yellow-700' :
-                        'bg-red-100 text-red-700'
+                        action.riskLevel === 'LOW' ? 'bg-success-100 text-success-700' :
+                        action.riskLevel === 'MEDIUM' ? 'bg-warning-100 text-warning-700' :
+                        'bg-danger-100 text-danger-700'
                       }`}>
                         {action.riskLevel} RISK
                       </span>
@@ -300,10 +300,50 @@ export default function ActionableRecommendations({
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
           </svg>
         </div>
-        <h3 className="text-xl font-semibold text-foreground mb-3">No Recommendations Available</h3>
-        <p className="text-muted-foreground max-w-md mx-auto">
-          Continue building your on-chain activity to receive personalized recommendations for improving your credit score.
-        </p>
+        <h3 className="text-xl font-semibold text-foreground mb-4">Build Your Credit Score</h3>
+        <div className="max-w-md mx-auto space-y-4">
+          <p className="text-muted-foreground text-sm mb-4">
+            Start with these proven strategies to build and improve your on-chain credit score:
+          </p>
+          
+          <div className="space-y-3 text-left">
+            <div className="flex items-start space-x-3 p-3 bg-primary-50 rounded-lg border border-primary-200">
+              <div className="w-6 h-6 bg-primary-500 rounded-full flex items-center justify-center flex-shrink-0">
+                <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                </svg>
+              </div>
+              <div>
+                <div className="text-sm font-medium text-primary-900">Regular Transactions</div>
+                <div className="text-xs text-primary-700">Make 5-10 transactions per month to show activity</div>
+              </div>
+            </div>
+            
+            <div className="flex items-start space-x-3 p-3 bg-success-50 rounded-lg border border-success-200">
+              <div className="w-6 h-6 bg-success-500 rounded-full flex items-center justify-center flex-shrink-0">
+                <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                </svg>
+              </div>
+              <div>
+                <div className="text-sm font-medium text-success-900">DeFi Participation</div>
+                <div className="text-xs text-success-700">Use lending, staking, or DEX protocols</div>
+              </div>
+            </div>
+            
+            <div className="flex items-start space-x-3 p-3 bg-purple-50 rounded-lg border border-purple-200">
+              <div className="w-6 h-6 bg-purple-500 rounded-full flex items-center justify-center flex-shrink-0">
+                <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                </svg>
+              </div>
+              <div>
+                <div className="text-sm font-medium text-purple-900">Maintain Balances</div>
+                <div className="text-xs text-purple-700">Keep consistent token balances over time</div>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
     )
   }
@@ -356,32 +396,28 @@ export default function ActionableRecommendations({
       </div>
 
       {/* Summary Stats */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
-        <div className="text-center p-6 bg-gradient-to-br from-blue-50 to-blue-100 border border-blue-200 rounded-xl hover:shadow-md transition-all duration-300">
-          <div className="text-3xl font-black text-blue-600 mb-2">{recommendations.length}</div>
-          <div className="text-sm font-medium text-blue-800">Total Recommendations</div>
-          <div className="text-xs text-blue-600 mt-1">Available actions</div>
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div className="text-center p-4 border rounded-lg">
+          <div className="text-2xl font-bold text-foreground mb-1">{recommendations.length}</div>
+          <div className="text-sm text-muted-foreground">Total</div>
         </div>
-        <div className="text-center p-6 bg-gradient-to-br from-red-50 to-red-100 border border-red-200 rounded-xl hover:shadow-md transition-all duration-300">
-          <div className="text-3xl font-black text-red-600 mb-2">
+        <div className="text-center p-4 border rounded-lg">
+          <div className="text-2xl font-bold text-danger-600 mb-1">
             {recommendations.filter(r => r.priority === 'HIGH').length}
           </div>
-          <div className="text-sm font-medium text-red-800">High Priority</div>
-          <div className="text-xs text-red-600 mt-1">Urgent actions</div>
+          <div className="text-sm text-muted-foreground">High Priority</div>
         </div>
-        <div className="text-center p-6 bg-gradient-to-br from-primary-50 to-primary-100 border border-primary-200 rounded-xl hover:shadow-md transition-all duration-300">
-          <div className="text-3xl font-black text-primary mb-2">
+        <div className="text-center p-4 border rounded-lg">
+          <div className="text-2xl font-bold text-primary mb-1">
             +{recommendations.reduce((sum, r) => sum + r.expectedScoreImpact, 0)}
           </div>
-          <div className="text-sm font-medium text-primary-800">Total Potential</div>
-          <div className="text-xs text-primary-600 mt-1">Score points</div>
+          <div className="text-sm text-muted-foreground">Potential Points</div>
         </div>
-        <div className="text-center p-6 bg-gradient-to-br from-green-50 to-green-100 border border-green-200 rounded-xl hover:shadow-md transition-all duration-300">
-          <div className="text-3xl font-black text-green-600 mb-2">
+        <div className="text-center p-4 border rounded-lg">
+          <div className="text-2xl font-bold text-success-600 mb-1">
             {recommendations.filter(r => r.implementationDifficulty === 'EASY').length}
           </div>
-          <div className="text-sm font-medium text-green-800">Easy Wins</div>
-          <div className="text-xs text-green-600 mt-1">Quick actions</div>
+          <div className="text-sm text-muted-foreground">Easy Wins</div>
         </div>
       </div>
 

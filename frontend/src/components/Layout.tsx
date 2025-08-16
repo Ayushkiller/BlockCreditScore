@@ -181,67 +181,31 @@ export default function Layout({ children }: LayoutProps) {
       {/* Footer */}
       <footer className="border-t bg-muted/30 mt-auto">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
+          <div className="flex flex-col md:flex-row justify-between items-center space-y-4 md:space-y-0">
             {/* Brand */}
-            <div className="space-y-4">
-              <div className="flex items-center space-x-2">
-                <div className="w-6 h-6 bg-gradient-primary rounded-md flex items-center justify-center text-white font-bold text-xs">
-                  CS
-                </div>
-                <span className="font-semibold">CryptoScore</span>
+            <div className="flex items-center space-x-2">
+              <div className="w-6 h-6 bg-primary rounded-md flex items-center justify-center text-white font-bold text-xs">
+                CS
               </div>
-              <p className="text-sm text-muted-foreground">
-                Decentralized credit scoring for the future of DeFi.
-              </p>
+              <span className="font-semibold">CryptoScore</span>
             </div>
 
-            {/* Quick Links */}
-            <div className="space-y-4">
-              <h4 className="font-semibold">Quick Links</h4>
-              <div className="space-y-2">
-                {navItems.map((item) => (
-                  <Link
-                    key={item.path}
-                    to={item.path}
-                    className="block text-sm text-muted-foreground hover:text-foreground transition-colors"
-                  >
-                    {item.label}
-                  </Link>
-                ))}
-              </div>
+            {/* Links */}
+            <div className="flex items-center space-x-6">
+              {navItems.map((item) => (
+                <Link
+                  key={item.path}
+                  to={item.path}
+                  className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+                >
+                  {item.label}
+                </Link>
+              ))}
             </div>
 
-            {/* Features */}
-            <div className="space-y-4">
-              <h4 className="font-semibold">Features</h4>
-              <div className="space-y-2 text-sm text-muted-foreground">
-                <div>🔍 Transaction Analysis</div>
-                <div>📊 Credit Scoring</div>
-                <div>🛡️ Risk Assessment</div>
-                <div>📈 Performance Tracking</div>
-              </div>
-            </div>
-
-            {/* Status */}
-            <div className="space-y-4">
-              <h4 className="font-semibold">System Status</h4>
-              <div className="space-y-2">
-                <div className="flex items-center space-x-2 text-sm">
-                  <div className="w-2 h-2 bg-success-500 rounded-full animate-pulse"></div>
-                  <span className="text-muted-foreground">
-                    All systems operational
-                  </span>
-                </div>
-                <div className="text-xs text-muted-foreground">
-                  Last updated: {new Date().toLocaleTimeString()}
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div className="border-t mt-8 pt-8 text-center">
+            {/* Copyright */}
             <p className="text-sm text-muted-foreground">
-              &copy; 2024 CryptoScore. Built with ❤️ for the DeFi community.
+              &copy; 2024 CryptoScore
             </p>
           </div>
         </div>
