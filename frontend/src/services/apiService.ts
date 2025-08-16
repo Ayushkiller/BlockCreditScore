@@ -73,8 +73,9 @@ interface EnhancedScoreBreakdown {
 }
 
 interface RiskFactor {
-  level: 'LOW' | 'MEDIUM' | 'HIGH'
+  level: 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL'
   score: number
+  confidence: number
   explanation: string
   indicators: string[]
   mitigationSuggestions: string[]
@@ -137,10 +138,12 @@ interface PersonalizedRecommendation {
 interface BehavioralInsights {
   activityPattern: 'REGULAR' | 'SPORADIC' | 'INACTIVE' | 'HYPERACTIVE'
   consistencyScore: number
-  userArchetype: 'CONSERVATIVE' | 'MODERATE' | 'AGGRESSIVE' | 'SPECULATIVE'
-  sophisticationLevel: 'BEGINNER' | 'INTERMEDIATE' | 'ADVANCED' | 'EXPERT'
+  userArchetype?: 'CONSERVATIVE' | 'MODERATE' | 'AGGRESSIVE' | 'SPECULATIVE'
+  sophisticationLevel?: 'BEGINNER' | 'INTERMEDIATE' | 'ADVANCED' | 'EXPERT'
   growthTrend: 'IMPROVING' | 'STABLE' | 'DECLINING'
   diversificationLevel: 'LOW' | 'MEDIUM' | 'HIGH'
+  gasEfficiency: number
+  preferredProtocols: string[]
 }
 
 // Enhanced Benchmarking Data interfaces matching backend
@@ -266,13 +269,103 @@ interface PredictiveInsights {
   timeframe: string
 }
 
+// Actual backend response structure
+interface BackendScoreBreakdown {
+  transactionVolume: {
+    score: number
+    weight: number
+    weightedScore: number
+    details: {
+      totalVolume: string
+      volumeScore: number
+      volumeCategory: string
+      gasEfficiency: number
+    }
+    insights: {
+      explanation: string
+      strengths: string[]
+      weaknesses: string[]
+      improvementPotential: number
+      benchmarkComparison: {
+        percentile: number
+        category: string
+      }
+    }
+  }
+  transactionFrequency: {
+    score: number
+    weight: number
+    weightedScore: number
+    details: {
+      totalTransactions: number
+      accountAge: number
+      frequencyScore: number
+      avgTransactionsPerMonth: number
+      consistencyScore: number
+    }
+    insights: {
+      explanation: string
+      strengths: string[]
+      weaknesses: string[]
+      improvementPotential: number
+      benchmarkComparison: {
+        percentile: number
+        category: string
+      }
+    }
+  }
+  stakingActivity: {
+    score: number
+    weight: number
+    weightedScore: number
+    details: {
+      stakingBalance: string
+      stakingScore: number
+      stakingRatio: number
+      stakingProtocols: string[]
+      stakingDuration: number
+    }
+    insights: {
+      explanation: string
+      strengths: string[]
+      weaknesses: string[]
+      improvementPotential: number
+      benchmarkComparison: {
+        percentile: number
+        category: string
+      }
+    }
+  }
+  defiInteractions: {
+    score: number
+    weight: number
+    weightedScore: number
+    details: {
+      protocolsUsed: number
+      defiScore: number
+      diversificationScore: number
+      favoriteProtocols: string[]
+      sophisticationLevel: string
+    }
+    insights: {
+      explanation: string
+      strengths: string[]
+      weaknesses: string[]
+      improvementPotential: number
+      benchmarkComparison: {
+        percentile: number
+        category: string
+      }
+    }
+  }
+}
+
 interface CreditScore {
   address: string
   score: number
   confidence: number
   timestamp: number
-  version: string
-  breakdown: EnhancedScoreBreakdown
+  breakdown: BackendScoreBreakdown
   riskAssessment?: RiskAssessment
   behavioralInsights?: BehavioralInsights
   recommendations?: PersonalizedRecommendation[]
@@ -307,26 +400,41 @@ class ApiService {
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}))
       
-      // Handle specific error codes
+      // Handle specific error codes with user-friendly messages
       if (errorData.error === 'INSUFFICIENT_DATA') {
-        throw new Error('Insufficient transaction history for credit scoring')
+        throw new Error('This address doesn\'t have enough transaction history for accurate credit scoring. Please try an address with more on-chain activity.')
       } else if (errorData.error === 'INVALID_ADDRESS') {
-        throw new Error('Invalid Ethereum address format')
+        throw new Error('Please enter a valid Ethereum address (42 characters starting with 0x)')
       } else if (errorData.error === 'RATE_LIMITED') {
-        throw new Error('Rate limit exceeded. Please try again later.')
+        throw new Error('Too many requests. Please wait a moment before trying again.')
+      } else if (errorData.error === 'BLOCKCHAIN_ERROR') {
+        throw new Error('Unable to fetch blockchain data. Please try again in a few moments.')
+      } else if (errorData.error === 'CALCULATION_ERROR') {
+        throw new Error('Error calculating credit score. Please try again or contact support.')
       }
       
-      throw new Error(errorData.message || `HTTP ${response.status}: ${response.statusText}`)
+      throw new Error(errorData.message || `Network error (${response.status}). Please check your connection and try again.`)
     }
 
     const result: ApiResponse<T> = await response.json()
     
     if (!result.success) {
-      throw new Error(result.message || 'API request failed')
+      throw new Error(result.message || 'Request failed. Please try again.')
     }
 
     if (!result.data) {
-      throw new Error('No data received from API')
+      throw new Error('No data received. Please try again.')
+    }
+
+    // Validate that we have the expected data structure
+    if (typeof result.data === 'object' && result.data !== null) {
+      const creditScore = result.data as any
+      if (creditScore.score !== undefined && creditScore.breakdown !== undefined) {
+        // Ensure breakdown has the expected structure
+        if (!creditScore.breakdown || typeof creditScore.breakdown !== 'object') {
+          throw new Error('Invalid data format received from server')
+        }
+      }
     }
 
     return result.data

@@ -209,13 +209,19 @@ app.get('/api/score/:address', async (req, res) => {
       const metrics = await blockchainService.getUserMetrics(address);
       const detailedBreakdown = scoreCalculator.generateScoreBreakdown(address, metrics);
       
+      // Calculate realistic confidence based on actual metrics
+      const creditScore = scoreCalculator.calculateCreditScore(address, metrics);
+      
       // Check if forecasting is requested
       const { includeForecast, includeBehavioralPrediction } = req.query;
       const responseData: any = {
         address: cachedScore.address,
         score: cachedScore.score,
-        confidence: 85, // Default confidence for cached scores
+        confidence: creditScore.confidence, // Use calculated confidence instead of hardcoded value
         breakdown: detailedBreakdown,
+        riskAssessment: detailedBreakdown.riskAssessment,
+        behavioralInsights: detailedBreakdown.behavioralInsights,
+        recommendations: detailedBreakdown.recommendations,
         timestamp: cachedScore.lastUpdated,
         cached: true
       };
@@ -316,6 +322,9 @@ app.get('/api/score/:address', async (req, res) => {
       score: creditScore.score,
       confidence: creditScore.confidence,
       breakdown: detailedBreakdown,
+      riskAssessment: detailedBreakdown.riskAssessment,
+      behavioralInsights: detailedBreakdown.behavioralInsights,
+      recommendations: detailedBreakdown.recommendations,
       timestamp: creditScore.timestamp,
       cached: false
     };

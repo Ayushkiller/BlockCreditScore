@@ -1,14 +1,107 @@
-import { useState } from 'react'
-import { ComponentScore } from '../services/apiService'
+import React, { useState, useMemo } from 'react'
+import { Chart as ChartJS, CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend, ArcElement, RadialLinearScale, PointElement, LineElement, Filler } from 'chart.js'
+import { Bar, Doughnut, Radar } from 'react-chartjs-2'
+
+ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend, ArcElement, RadialLinearScale, PointElement, LineElement, Filler)
+
+interface BackendScoreBreakdown {
+  transactionVolume: {
+    score: number
+    weight: number
+    weightedScore: number
+    details: {
+      totalVolume: string
+      volumeScore: number
+      volumeCategory: string
+      gasEfficiency: number
+    }
+    insights: {
+      explanation: string
+      strengths: string[]
+      weaknesses: string[]
+      improvementPotential: number
+      benchmarkComparison: {
+        percentile: number
+        category: string
+      }
+    }
+  }
+  transactionFrequency: {
+    score: number
+    weight: number
+    weightedScore: number
+    details: {
+      totalTransactions: number
+      accountAge: number
+      frequencyScore: number
+      avgTransactionsPerMonth: number
+      consistencyScore: number
+    }
+    insights: {
+      explanation: string
+      strengths: string[]
+      weaknesses: string[]
+      improvementPotential: number
+      benchmarkComparison: {
+        percentile: number
+        category: string
+      }
+    }
+  }
+  stakingActivity: {
+    score: number
+    weight: number
+    weightedScore: number
+    details: {
+      stakingBalance: string
+      stakingScore: number
+      stakingRatio: number
+      stakingProtocols: string[]
+      stakingDuration: number
+    }
+    insights: {
+      explanation: string
+      strengths: string[]
+      weaknesses: string[]
+      improvementPotential: number
+      benchmarkComparison: {
+        percentile: number
+        category: string
+      }
+    }
+  }
+  defiInteractions: {
+    score: number
+    weight: number
+    weightedScore: number
+    details: {
+      protocolsUsed: number
+      defiScore: number
+      diversificationScore: number
+      favoriteProtocols: string[]
+      sophisticationLevel: string
+    }
+    insights: {
+      explanation: string
+      strengths: string[]
+      weaknesses: string[]
+      improvementPotential: number
+      benchmarkComparison: {
+        percentile: number
+        category: string
+      }
+    }
+  }
+}
 
 interface InteractiveScoreBreakdownProps {
-  breakdown: Record<string, ComponentScore>
+  breakdown: BackendScoreBreakdown
   totalScore: number
 }
 
 interface ComponentCardProps {
   name: string
-  component: ComponentScore
+  component: any
   isExpanded: boolean
   onToggle: () => void
   onHover: (name: string | null) => void
@@ -146,7 +239,7 @@ function ComponentCard({
                   <span>Strengths</span>
                 </h5>
                 <ul className="space-y-1">
-                  {component.strengths.slice(0, 3).map((strength, index) => (
+                  {component.insights.strengths.map((strength: string, index: number) => (
                     <li key={index} className="flex items-start space-x-2">
                       <div className="w-1.5 h-1.5 bg-success-500 rounded-full mt-2 flex-shrink-0"></div>
                       <span className="text-sm text-muted-foreground">{strength}</span>
@@ -156,7 +249,7 @@ function ComponentCard({
               </div>
             )}
 
-            {component.weaknesses && component.weaknesses.length > 0 && (
+            {component.insights?.weaknesses && component.insights.weaknesses.length > 0 && (
               <div>
                 <h5 className="font-medium text-warning-600 mb-2 flex items-center space-x-1">
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -165,7 +258,7 @@ function ComponentCard({
                   <span>Areas to Improve</span>
                 </h5>
                 <ul className="space-y-1">
-                  {component.weaknesses.slice(0, 3).map((weakness, index) => (
+                  {component.insights.weaknesses.map((weakness: string, index: number) => (
                     <li key={index} className="flex items-start space-x-2">
                       <div className="w-1.5 h-1.5 bg-warning-500 rounded-full mt-2 flex-shrink-0"></div>
                       <span className="text-sm text-muted-foreground">{weakness}</span>
@@ -191,6 +284,24 @@ function ComponentCard({
 export default function InteractiveScoreBreakdown({ breakdown, totalScore }: InteractiveScoreBreakdownProps) {
   const [expandedComponent, setExpandedComponent] = useState<string | null>(null)
   const [hoveredComponent, setHoveredComponent] = useState<string | null>(null)
+  const [viewMode, setViewMode] = useState<'cards' | 'charts'>('cards')
+
+  // Safety check for breakdown data
+  if (!breakdown || typeof breakdown !== 'object') {
+    return (
+      <div className="card p-8 text-center">
+        <div className="w-16 h-16 bg-yellow-100 rounded-full flex items-center justify-center mx-auto mb-4">
+          <svg className="w-8 h-8 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
+          </svg>
+        </div>
+        <h3 className="text-lg font-semibold text-foreground mb-2">Score Breakdown Unavailable</h3>
+        <p className="text-muted-foreground">
+          The detailed score breakdown is not available at the moment. Please try refreshing the page.
+        </p>
+      </div>
+    )
+  }
 
   const toggleComponent = (componentName: string) => {
     setExpandedComponent(expandedComponent === componentName ? null : componentName)
@@ -206,6 +317,187 @@ export default function InteractiveScoreBreakdown({ breakdown, totalScore }: Int
     return bWeight - aWeight
   })
 
+  // Chart data preparation
+  const chartLabels = sortedComponents.map(([name]) => 
+    name.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase())
+  )
+  const chartScores = sortedComponents.map(([, component]) => component.score || 0)
+  const chartWeights = sortedComponents.map(([, component]) => (component.weight || 0) * 100)
+  const chartWeightedScores = sortedComponents.map(([, component]) => component.weightedScore || 0)
+
+  // Bar chart data
+  const barChartData = {
+    labels: chartLabels,
+    datasets: [
+      {
+        label: 'Component Score',
+        data: chartScores,
+        backgroundColor: chartScores.map(score => 
+          score >= 80 ? 'rgba(34, 197, 94, 0.8)' :
+          score >= 60 ? 'rgba(251, 191, 36, 0.8)' : 'rgba(239, 68, 68, 0.8)'
+        ),
+        borderColor: chartScores.map(score => 
+          score >= 80 ? 'rgba(34, 197, 94, 1)' :
+          score >= 60 ? 'rgba(251, 191, 36, 1)' : 'rgba(239, 68, 68, 1)'
+        ),
+        borderWidth: 2,
+        borderRadius: 8,
+        borderSkipped: false,
+      },
+      {
+        label: 'Weight (%)',
+        data: chartWeights,
+        backgroundColor: 'rgba(99, 102, 241, 0.6)',
+        borderColor: 'rgba(99, 102, 241, 1)',
+        borderWidth: 2,
+        borderRadius: 8,
+        borderSkipped: false,
+        yAxisID: 'y1',
+      }
+    ],
+  }
+
+  // Doughnut chart data for weighted contribution
+  const doughnutData = {
+    labels: chartLabels,
+    datasets: [
+      {
+        label: 'Weighted Score Contribution',
+        data: chartWeightedScores,
+        backgroundColor: [
+          'rgba(34, 197, 94, 0.8)',
+          'rgba(59, 130, 246, 0.8)',
+          'rgba(251, 191, 36, 0.8)',
+          'rgba(168, 85, 247, 0.8)',
+          'rgba(239, 68, 68, 0.8)',
+          'rgba(20, 184, 166, 0.8)',
+          'rgba(245, 101, 101, 0.8)',
+          'rgba(156, 163, 175, 0.8)',
+        ],
+        borderColor: [
+          'rgba(34, 197, 94, 1)',
+          'rgba(59, 130, 246, 1)',
+          'rgba(251, 191, 36, 1)',
+          'rgba(168, 85, 247, 1)',
+          'rgba(239, 68, 68, 1)',
+          'rgba(20, 184, 166, 1)',
+          'rgba(245, 101, 101, 1)',
+          'rgba(156, 163, 175, 1)',
+        ],
+        borderWidth: 2,
+      },
+    ],
+  }
+
+  // Radar chart data for comprehensive view
+  const radarData = {
+    labels: chartLabels,
+    datasets: [
+      {
+        label: 'Current Performance',
+        data: chartScores,
+        backgroundColor: 'rgba(59, 130, 246, 0.2)',
+        borderColor: 'rgba(59, 130, 246, 1)',
+        borderWidth: 2,
+        pointBackgroundColor: 'rgba(59, 130, 246, 1)',
+        pointBorderColor: '#fff',
+        pointHoverBackgroundColor: '#fff',
+        pointHoverBorderColor: 'rgba(59, 130, 246, 1)',
+      },
+      {
+        label: 'Potential Performance',
+        data: chartScores.map((score, index) => 
+          Math.min(score + (sortedComponents[index][1].improvementPotential || 0), 100)
+        ),
+        backgroundColor: 'rgba(34, 197, 94, 0.1)',
+        borderColor: 'rgba(34, 197, 94, 0.8)',
+        borderWidth: 2,
+        borderDash: [5, 5],
+        pointBackgroundColor: 'rgba(34, 197, 94, 0.8)',
+        pointBorderColor: '#fff',
+        pointHoverBackgroundColor: '#fff',
+        pointHoverBorderColor: 'rgba(34, 197, 94, 0.8)',
+      },
+    ],
+  }
+
+  const chartOptions = {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: {
+        position: 'top' as const,
+      },
+      tooltip: {
+        mode: 'index' as const,
+        intersect: false,
+      },
+    },
+    scales: {
+      y: {
+        beginAtZero: true,
+        max: 100,
+        title: {
+          display: true,
+          text: 'Score'
+        }
+      },
+      y1: {
+        type: 'linear' as const,
+        display: true,
+        position: 'right' as const,
+        max: 100,
+        title: {
+          display: true,
+          text: 'Weight (%)'
+        },
+        grid: {
+          drawOnChartArea: false,
+        },
+      },
+    },
+  }
+
+  const doughnutOptions = {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: {
+        position: 'right' as const,
+      },
+      tooltip: {
+        callbacks: {
+          label: function(context: any) {
+            const label = context.label || ''
+            const value = context.parsed || 0
+            const total = context.dataset.data.reduce((a: number, b: number) => a + b, 0)
+            const percentage = ((value / total) * 100).toFixed(1)
+            return `${label}: ${value} pts (${percentage}%)`
+          }
+        }
+      }
+    },
+  }
+
+  const radarOptions = {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: {
+        position: 'top' as const,
+      },
+    },
+    scales: {
+      r: {
+        beginAtZero: true,
+        max: 100,
+        ticks: {
+          stepSize: 20
+        }
+      },
+    },
+  }
+
   return (
     <div className="space-y-8">
       {/* Header */}
@@ -216,67 +508,165 @@ export default function InteractiveScoreBreakdown({ breakdown, totalScore }: Int
         </h2>
         <p className="text-lg text-muted-foreground max-w-3xl mx-auto leading-relaxed">
           Explore how each component contributes to your total score of <span className="font-bold text-primary">{totalScore}</span>. 
-          Click on any component to see detailed insights and improvement opportunities.
+          {viewMode === 'cards' ? 'Click on any component to see detailed insights and improvement opportunities.' : 'Interactive charts show your performance across all components.'}
         </p>
-      </div>
-
-      {/* Visual Overview */}
-      <div className="card p-6">
-        <h3 className="text-lg font-semibold text-foreground mb-4">Component Weights</h3>
-        <div className="space-y-3">
-          {sortedComponents.map(([name, component]) => {
-            const weight = (component.weight || 0) * 100
-            const score = component.score || 0
-            const isHighlighted = hoveredComponent === name
-            
-            return (
-              <div key={name} className="space-y-2">
-                <div className="flex justify-between items-center">
-                  <span className={`font-medium ${
-                    isHighlighted ? 'text-primary' : 'text-foreground'
-                  }`}>
-                    {name.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase())}
-                  </span>
-                  <div className="flex items-center space-x-2 text-sm">
-                    <span className={`font-medium ${
-                      score >= 80 ? 'text-success-600' : 
-                      score >= 60 ? 'text-warning-600' : 'text-danger-600'
-                    }`}>
-                      {score}/100
-                    </span>
-                    <span className="text-muted-foreground">
-                      ({Math.round(weight)}%)
-                    </span>
-                  </div>
-                </div>
-                <div className="w-full bg-muted rounded-full h-2">
-                  <div 
-                    className={`h-2 rounded-full transition-all duration-300 ${
-                      isHighlighted ? 'bg-primary' : 'bg-primary/70'
-                    }`}
-                    style={{ width: `${weight}%` }}
-                  />
-                </div>
-              </div>
-            )
-          })}
+        
+        {/* View Mode Toggle */}
+        <div className="flex justify-center">
+          <div className="bg-muted rounded-lg p-1 flex">
+            <button
+              onClick={() => setViewMode('cards')}
+              className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+                viewMode === 'cards'
+                  ? 'bg-background text-foreground shadow-sm'
+                  : 'text-muted-foreground hover:text-foreground'
+              }`}
+            >
+              📋 Card View
+            </button>
+            <button
+              onClick={() => setViewMode('charts')}
+              className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+                viewMode === 'charts'
+                  ? 'bg-background text-foreground shadow-sm'
+                  : 'text-muted-foreground hover:text-foreground'
+              }`}
+            >
+              📊 Chart View
+            </button>
+          </div>
         </div>
       </div>
 
-      {/* Component Cards */}
-      <div className="grid gap-6">
-        {sortedComponents.map(([name, component]) => (
-          <ComponentCard
-            key={name}
-            name={name}
-            component={component}
-            isExpanded={expandedComponent === name}
-            onToggle={() => toggleComponent(name)}
-            onHover={handleHover}
-            isHighlighted={hoveredComponent === name}
-          />
-        ))}
-      </div>
+      {/* Content based on view mode */}
+      {viewMode === 'charts' ? (
+        <div className="space-y-8">
+          {/* Interactive Charts */}
+          <div className="grid lg:grid-cols-2 gap-8">
+            {/* Bar Chart - Scores vs Weights */}
+            <div className="card p-6">
+              <h3 className="text-lg font-semibold text-foreground mb-4 flex items-center space-x-2">
+                <span>📊</span>
+                <span>Scores & Weights</span>
+              </h3>
+              <div className="h-80">
+                <Bar data={barChartData} options={chartOptions} />
+              </div>
+            </div>
+
+            {/* Doughnut Chart - Weighted Contributions */}
+            <div className="card p-6">
+              <h3 className="text-lg font-semibold text-foreground mb-4 flex items-center space-x-2">
+                <span>🍩</span>
+                <span>Score Contributions</span>
+              </h3>
+              <div className="h-80">
+                <Doughnut data={doughnutData} options={doughnutOptions} />
+              </div>
+            </div>
+          </div>
+
+          {/* Radar Chart - Performance Overview */}
+          <div className="card p-6">
+            <h3 className="text-lg font-semibold text-foreground mb-4 flex items-center space-x-2">
+              <span>🎯</span>
+              <span>Performance Radar</span>
+            </h3>
+            <div className="h-96">
+              <Radar data={radarData} options={radarOptions} />
+            </div>
+            <p className="text-sm text-muted-foreground mt-4 text-center">
+              The solid line shows your current performance, while the dashed line shows your potential with improvements.
+            </p>
+          </div>
+
+          {/* Chart Insights */}
+          <div className="grid md:grid-cols-3 gap-6">
+            <div className="card p-6 text-center">
+              <div className="text-3xl mb-2">🏆</div>
+              <div className="text-2xl font-bold text-success-600 mb-1">
+                {sortedComponents.filter(([, c]) => (c.score || 0) >= 80).length}
+              </div>
+              <div className="text-sm text-muted-foreground">Top Performing Areas</div>
+            </div>
+            <div className="card p-6 text-center">
+              <div className="text-3xl mb-2">📈</div>
+              <div className="text-2xl font-bold text-blue-600 mb-1">
+                +{Math.round(sortedComponents.reduce((sum, [, c]) => sum + (c.improvementPotential || 0), 0))}
+              </div>
+              <div className="text-sm text-muted-foreground">Total Growth Potential</div>
+            </div>
+            <div className="card p-6 text-center">
+              <div className="text-3xl mb-2">⚖️</div>
+              <div className="text-2xl font-bold text-purple-600 mb-1">
+                {Math.round(sortedComponents.reduce((sum, [, c]) => sum + ((c.weight || 0) * 100), 0))}%
+              </div>
+              <div className="text-sm text-muted-foreground">Total Weight Coverage</div>
+            </div>
+          </div>
+        </div>
+      ) : (
+        <div className="space-y-8">
+          {/* Visual Overview */}
+          <div className="card p-6">
+            <h3 className="text-lg font-semibold text-foreground mb-4">Component Weights</h3>
+            <div className="space-y-3">
+              {sortedComponents.map(([name, component]) => {
+                const weight = (component.weight || 0) * 100
+                const score = component.score || 0
+                const isHighlighted = hoveredComponent === name
+                
+                return (
+                  <div key={name} className="space-y-2">
+                    <div className="flex justify-between items-center">
+                      <span className={`font-medium ${
+                        isHighlighted ? 'text-primary' : 'text-foreground'
+                      }`}>
+                        {name.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase())}
+                      </span>
+                      <div className="flex items-center space-x-2 text-sm">
+                        <span className={`font-medium ${
+                          score >= 80 ? 'text-success-600' : 
+                          score >= 60 ? 'text-warning-600' : 'text-danger-600'
+                        }`}>
+                          {score}/100
+                        </span>
+                        <span className="text-muted-foreground">
+                          ({Math.round(weight)}%)
+                        </span>
+                      </div>
+                    </div>
+                    <div className="w-full bg-muted rounded-full h-2">
+                      <div 
+                        className={`h-2 rounded-full transition-all duration-300 ${
+                          isHighlighted ? 'bg-primary' : 'bg-primary/70'
+                        }`}
+                        style={{ width: `${weight}%` }}
+                      />
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+
+          {/* Component Cards */}
+          <div className="grid gap-6">
+            {sortedComponents.map(([name, component]) => (
+              <ComponentCard
+                key={name}
+                name={name}
+                component={component}
+                isExpanded={expandedComponent === name}
+                onToggle={() => toggleComponent(name)}
+                onHover={handleHover}
+                isHighlighted={hoveredComponent === name}
+              />
+            ))}
+          </div>
+        </div>
+      )}
+
 
       {/* Summary */}
       <div className="card p-6">

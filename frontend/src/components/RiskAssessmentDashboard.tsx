@@ -81,6 +81,10 @@ function RiskFactorCard({ factorName, factor, onClick }: RiskFactorCardProps) {
           <span className="text-xs text-gray-600">Risk Score</span>
           <span className="text-sm font-semibold">{factor.score}/100</span>
         </div>
+        <div className="flex items-center justify-between mb-1">
+          <span className="text-xs text-gray-600">Confidence</span>
+          <span className="text-sm font-medium">{factor.confidence || 0}%</span>
+        </div>
         <div className="w-full bg-white bg-opacity-60 rounded-full h-2">
           <div 
             className={`h-2 rounded-full transition-all duration-300 ${
@@ -256,7 +260,9 @@ export default function RiskAssessmentDashboard({ riskAssessment, onRiskFactorCl
         
         <div className="bg-white rounded-lg border border-gray-200 p-4 text-center">
           <div className="text-2xl font-bold text-gray-900 mb-1">
-            {Math.round(Object.values(riskAssessment.riskFactors).reduce((sum, f) => sum + f.confidence, 0) / Object.values(riskAssessment.riskFactors).length)}%
+            {Object.values(riskAssessment.riskFactors).length > 0 
+              ? Math.round(Object.values(riskAssessment.riskFactors).reduce((sum, f) => sum + (f.confidence || 0), 0) / Object.values(riskAssessment.riskFactors).length)
+              : 0}%
           </div>
           <div className="text-sm text-gray-600">Avg Confidence</div>
         </div>

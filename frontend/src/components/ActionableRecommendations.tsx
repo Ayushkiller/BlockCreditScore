@@ -136,7 +136,7 @@ function RecommendationCard({ recommendation, index, onAction }: RecommendationC
         </div>
         <div className="text-center">
           <div className="font-semibold text-foreground">
-            {recommendation.timeToImpact.replace('_', ' ')}
+            {recommendation.timeToImpact ? recommendation.timeToImpact.replace('_', ' ') : 'Unknown'}
           </div>
           <div className="text-xs text-muted-foreground">Timeline</div>
         </div>

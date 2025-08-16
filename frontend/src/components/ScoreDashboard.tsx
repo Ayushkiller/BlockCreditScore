@@ -1,19 +1,9 @@
 import React, { useState, useEffect } from 'react'
-import { useWallet } from '../contexts/WalletContext'
-import { apiService, type CreditScore, type ComponentScore, type PersonalizedRecommendation, type RiskAssessment, type RiskFactor, type BenchmarkingData } from '../services/apiService'
-import WalletSwitchGuide from './WalletSwitchGuide'
-import RiskAssessmentDashboard from './RiskAssessmentDashboard'
-import RiskMitigationPanel from './RiskMitigationPanel'
-import RiskMonitoringAlerts, { type RiskAlert } from './RiskMonitoringAlerts'
-import RiskFactorExplanation from './RiskFactorExplanation'
-import CompetitivePositioningDashboard from './CompetitivePositioningDashboard'
-import EnhancedLoadingExperience from './EnhancedLoadingExperience'
-import ScoreRevealAnimation from './ScoreRevealAnimation'
+import { CreditScore, apiService } from '../services/apiService'
 import InteractiveScoreBreakdown from './InteractiveScoreBreakdown'
 import ActionableRecommendations from './ActionableRecommendations'
-import VisualRiskAssessment from './VisualRiskAssessment'
-import ScoreInsightCards from './ScoreInsightCards'
-import FloatingActionMenu from './FloatingActionMenu'
+import HistoricalScoreTracking from './HistoricalScoreTracking'
+import DataExportShare from './DataExportShare'
 
 interface BreakdownComponentProps {
   label: string

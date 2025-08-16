@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useWallet } from '../contexts/WalletContext'
-import ScoreDashboard from '../components/ScoreDashboard'
+import SimplifiedScoreDashboard from '../components/SimplifiedScoreDashboard'
 
 export default function Dashboard() {
   const { account } = useWallet()
@@ -143,7 +143,7 @@ export default function Dashboard() {
 
       {/* Main Content */}
       {account || (addressToAnalyze && isValidAddress(addressToAnalyze)) ? (
-        <ScoreDashboard addressOverride={addressToAnalyze || account} />
+        <SimplifiedScoreDashboard address={addressToAnalyze} onAddressChange={setAddressToAnalyze} />
       ) : (
         <div className="card text-center max-w-lg mx-auto">
           <div className="card-content">
