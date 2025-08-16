@@ -1,4 +1,3 @@
-import { useState } from "react";
 import { CreditScore } from "../services/apiService";
 
 interface ScoreInsightCardsProps {
@@ -45,15 +44,29 @@ function InsightCard({
     <div
       className={`
         border rounded-lg p-6 transition-all duration-200 hover:shadow-md cursor-pointer
+        focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2
         ${colorClasses[color]}
       `}
       onClick={onClick}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          onClick?.();
+        }
+      }}
+      tabIndex={0}
+      role="button"
+      aria-label={`${title}: ${value}. ${description}`}
     >
       {/* Header with Icon */}
       <div className="flex items-center justify-between mb-4">
         <div className="text-2xl">{icon}</div>
         {trend && (
-          <div className="text-lg opacity-60" title={trendIcons[trend].label}>
+          <div
+            className="text-lg opacity-60"
+            title={trendIcons[trend].label}
+            aria-label={trendIcons[trend].label}
+          >
             {trendIcons[trend].icon}
           </div>
         )}

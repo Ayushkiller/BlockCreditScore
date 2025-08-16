@@ -12,6 +12,8 @@
   body {
     @apply bg-background text-foreground font-sans antialiased;
     font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    line-height: 1.6;
+    letter-spacing: -0.01em;
   }
   
   html {
@@ -19,7 +21,8 @@
   }
   
   :root {
-    --background: 0 0% 100%;
+    /* Enhanced color palette for better contrast and readability */
+    --background: 250 250% 99%;
     --foreground: 222.2 84% 4.9%;
     --card: 0 0% 100%;
     --card-foreground: 222.2 84% 4.9%;
@@ -27,11 +30,11 @@
     --popover-foreground: 222.2 84% 4.9%;
     --primary: 221.2 83.2% 53.3%;
     --primary-foreground: 210 40% 98%;
-    --secondary: 210 40% 96%;
+    --secondary: 210 40% 98%;
     --secondary-foreground: 222.2 84% 4.9%;
-    --muted: 210 40% 96%;
-    --muted-foreground: 215.4 16.3% 46.9%;
-    --accent: 210 40% 96%;
+    --muted: 210 40% 98%;
+    --muted-foreground: 215.4 16.3% 44%;
+    --accent: 210 40% 98%;
     --accent-foreground: 222.2 84% 4.9%;
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 210 40% 98%;
@@ -39,6 +42,14 @@
     --input: 214.3 31.8% 91.4%;
     --ring: 221.2 83.2% 53.3%;
     --radius: 0.75rem;
+    
+    /* Enhanced spacing variables */
+    --spacing-xs: 0.25rem;
+    --spacing-sm: 0.5rem;
+    --spacing-md: 1rem;
+    --spacing-lg: 1.5rem;
+    --spacing-xl: 2rem;
+    --spacing-2xl: 3rem;
   }
   
   .dark {
@@ -53,7 +64,7 @@
     --secondary: 217.2 32.6% 17.5%;
     --secondary-foreground: 210 40% 98%;
     --muted: 217.2 32.6% 17.5%;
-    --muted-foreground: 215 20.2% 65.1%;
+    --muted-foreground: 215 20.2% 70%;
     --accent: 217.2 32.6% 17.5%;
     --accent-foreground: 210 40% 98%;
     --destructive: 0 62.8% 30.6%;
@@ -65,71 +76,92 @@
 }
 
 @layer components {
-  /* Modern Button System */
+  /* Enhanced Button System with better spacing and typography */
   .btn {
-    @apply inline-flex items-center justify-center whitespace-nowrap rounded-lg text-sm font-medium ring-offset-background transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50;
+    @apply inline-flex items-center justify-center whitespace-nowrap rounded-lg font-medium ring-offset-background transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 active:scale-95 transform;
+    letter-spacing: 0.025em;
+    line-height: 1.2;
   }
   
   .btn-primary {
-    @apply btn bg-primary text-primary-foreground hover:bg-primary/90;
-    @apply h-10 px-6 py-2;
+    @apply btn bg-primary text-primary-foreground hover:bg-primary/90 shadow-sm hover:shadow-md;
+    @apply h-11 px-8 py-3 text-sm;
   }
   
   .btn-secondary {
-    @apply btn bg-secondary text-secondary-foreground hover:bg-secondary/80 border border-input;
-    @apply h-10 px-6 py-2;
+    @apply btn bg-secondary text-secondary-foreground hover:bg-secondary/80 border border-input shadow-sm hover:shadow-md;
+    @apply h-11 px-8 py-3 text-sm;
   }
   
   .btn-ghost {
     @apply btn hover:bg-accent hover:text-accent-foreground;
-    @apply h-10 px-6 py-2;
+    @apply h-11 px-8 py-3 text-sm;
   }
   
   .btn-outline {
-    @apply btn border border-input bg-background hover:bg-accent hover:text-accent-foreground;
-    @apply h-10 px-6 py-2;
+    @apply btn border border-input bg-background hover:bg-accent hover:text-accent-foreground shadow-sm hover:shadow-md;
+    @apply h-11 px-8 py-3 text-sm;
   }
   
   .btn-sm {
-    @apply h-8 px-3 text-xs;
+    @apply h-9 px-4 py-2 text-xs;
   }
   
   .btn-lg {
-    @apply h-12 px-8 text-base;
+    @apply h-14 px-10 py-4 text-base;
   }
   
-  /* Modern Card System */
+  /* Enhanced Card System with better spacing and visual hierarchy */
   .card {
-    @apply rounded-lg border bg-card text-card-foreground shadow-sm hover:shadow-md transition-shadow duration-200;
+    @apply rounded-xl border bg-card text-card-foreground shadow-sm hover:shadow-lg transition-all duration-300;
+    padding: 2rem;
+    margin-bottom: 1.5rem;
+  }
+  
+  .card-interactive {
+    @apply card cursor-pointer hover:scale-[1.01] focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2;
   }
   
   .card-header {
-    @apply flex flex-col space-y-1.5 p-6;
+    @apply flex flex-col space-y-3 mb-6;
+    padding: 0;
   }
   
   .card-title {
-    @apply text-2xl font-semibold leading-none tracking-tight;
+    @apply text-2xl font-semibold leading-tight tracking-tight;
+    color: hsl(var(--foreground));
+    margin-bottom: 0.5rem;
   }
   
   .card-description {
-    @apply text-sm text-muted-foreground;
+    @apply text-base text-muted-foreground leading-relaxed;
+    line-height: 1.6;
   }
   
   .card-content {
-    @apply p-6 pt-0;
+    @apply space-y-6;
+    padding: 0;
   }
   
   .card-footer {
-    @apply flex items-center p-6 pt-0;
+    @apply flex items-center justify-between pt-6 mt-6 border-t border-border;
+    padding-left: 0;
+    padding-right: 0;
+    padding-bottom: 0;
   }
   
-  /* Modern Input System */
+  /* Enhanced Input System with better spacing and focus states */
   .input {
-    @apply flex h-10 w-full rounded-lg border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 transition-all duration-200;
+    @apply flex h-12 w-full rounded-lg border-2 border-input bg-background px-4 py-3 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:border-primary disabled:cursor-not-allowed disabled:opacity-50 transition-all duration-200;
+    line-height: 1.5;
   }
   
   .input-field {
     @apply input;
+  }
+  
+  .input:focus {
+    @apply border-primary shadow-lg shadow-primary/10;
   }
   
   /* Simplified gradient backgrounds */
@@ -620,4 +652,167 @@ h1, h2, h3, h4, h5, h6 {
 
 .dark .input-field:focus {
   background-color: rgb(17, 24, 39);
+}/* Enhan
+ced Accessibility and UX Utilities */
+.focus-ring {
+  @apply focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2;
+}
+
+.interactive {
+  @apply transition-all duration-200 hover:scale-[1.02] active:scale-95 focus-ring;
+}
+
+.glass-effect {
+  @apply bg-white/10 backdrop-blur-md border border-white/20;
+}
+
+.dark .glass-effect {
+  @apply bg-black/10 backdrop-blur-md border border-white/10;
+}
+
+/* Enhanced Loading States */
+.loading-dots::after {
+  content: '';
+  animation: loading-dots 1.5s infinite;
+}
+
+@keyframes loading-dots {
+  0%, 20% { content: ''; }
+  40% { content: '.'; }
+  60% { content: '..'; }
+  80%, 100% { content: '...'; }
+}
+
+/* Micro-interactions */
+.hover-lift {
+  @apply transition-transform duration-200 hover:-translate-y-1 hover:shadow-lg;
+}
+
+.press-effect {
+  @apply active:scale-95 transition-transform duration-100;
+}
+
+/* Status Indicators with Animation */
+.status-pulse {
+  @apply relative;
+}
+
+.status-pulse::before {
+  content: '';
+  @apply absolute inset-0 rounded-full animate-ping opacity-75;
+}
+
+.status-online::before {
+  @apply bg-green-400;
+}
+
+.status-warning::before {
+  @apply bg-yellow-400;
+}
+
+.status-error::before {
+  @apply bg-red-400;
+}
+
+/* Enhanced Form Elements */
+.input-enhanced {
+  @apply input transition-all duration-200 hover:border-primary/50 focus:border-primary focus:shadow-lg focus:shadow-primary/10;
+}
+
+/* Tooltip Enhancement */
+.tooltip-enhanced {
+  @apply relative;
+}
+
+.tooltip-enhanced:hover .tooltip-content {
+  @apply opacity-100;
+}
+
+.tooltip-enhanced::after {
+  content: attr(data-tooltip);
+  @apply absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-2 text-sm text-white bg-gray-900 rounded-lg opacity-0 pointer-events-none transition-opacity duration-200 whitespace-nowrap z-50;
+}
+
+.tooltip-enhanced:hover::after {
+  @apply opacity-100;
+}
+
+/* Progress Enhancement */
+.progress-enhanced {
+  @apply relative overflow-hidden rounded-full bg-muted;
+}
+
+.progress-enhanced::after {
+  content: '';
+  @apply absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent animate-pulse;
+}
+
+/* Card Hover Effects */
+.card-hover {
+  @apply transition-all duration-300 hover:shadow-xl hover:-translate-y-1;
+}
+
+/* Button Loading State */
+.btn-loading {
+  @apply relative overflow-hidden;
+}
+
+.btn-loading::after {
+  content: '';
+  @apply absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent animate-pulse;
+}
+
+/* Enhanced Animations */
+@keyframes float {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-10px); }
+}
+
+.animate-float {
+  animation: float 3s ease-in-out infinite;
+}
+
+@keyframes gradient-shift {
+  0%, 100% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+}
+
+.animate-gradient {
+  background-size: 200% 200%;
+  animation: gradient-shift 3s ease infinite;
+}
+
+/* Responsive Enhancements */
+@media (max-width: 768px) {
+  .hover-lift:hover {
+    transform: none;
+  }
+  
+  .card-hover:hover {
+    transform: none;
+  }
+  
+  .interactive:hover {
+    transform: none;
+  }
+}
+
+/* High Contrast Mode Support */
+@media (prefers-contrast: high) {
+  .card {
+    @apply border-2 border-foreground;
+  }
+  
+  .btn {
+    @apply border-2 border-current;
+  }
+}
+
+/* Reduced Motion Support */
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }

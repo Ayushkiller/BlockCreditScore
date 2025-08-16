@@ -22,7 +22,13 @@
   "devDependencies": {
     "concurrently": "^8.2.2"
   },
-  "keywords": ["crypto", "credit-score", "defi", "blockchain", "ethereum"],
+  "keywords": [
+    "crypto",
+    "credit-score",
+    "defi",
+    "blockchain",
+    "ethereum"
+  ],
   "author": "",
   "license": "MIT"
 }

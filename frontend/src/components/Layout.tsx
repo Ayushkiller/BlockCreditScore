@@ -88,8 +88,9 @@ export default function Layout({ children }: LayoutProps) {
               {/* Dark mode toggle */}
               <button
                 onClick={toggleDarkMode}
-                className="p-2 rounded-lg hover:bg-accent transition-colors duration-200"
-                aria-label="Toggle dark mode"
+                className="p-2 rounded-lg hover:bg-accent transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2"
+                aria-label={`Switch to ${isDarkMode ? 'light' : 'dark'} mode`}
+                title={`Switch to ${isDarkMode ? 'light' : 'dark'} mode`}
               >
                 {isDarkMode ? (
                   <svg
@@ -128,8 +129,9 @@ export default function Layout({ children }: LayoutProps) {
               {/* Mobile menu button */}
               <button
                 onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-                className="md:hidden p-2 rounded-lg hover:bg-accent transition-colors duration-200"
-                aria-label="Toggle mobile menu"
+                className="md:hidden p-2 rounded-lg hover:bg-accent transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2"
+                aria-label={`${isMobileMenuOpen ? 'Close' : 'Open'} mobile menu`}
+                aria-expanded={isMobileMenuOpen}
               >
                 <svg
                   className="w-5 h-5"
@@ -174,29 +176,31 @@ export default function Layout({ children }: LayoutProps) {
       </nav>
 
       {/* Main Content */}
-      <main className="container mx-auto px-4 sm:px-6 lg:px-8 py-8 animate-fade-in">
-        {children}
+      <main className="container mx-auto px-4 sm:px-6 lg:px-8 py-12 animate-fade-in max-w-7xl">
+        <div className="space-y-8">
+          {children}
+        </div>
       </main>
 
       {/* Footer */}
-      <footer className="border-t bg-muted/30 mt-auto">
-        <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          <div className="flex flex-col md:flex-row justify-between items-center space-y-4 md:space-y-0">
+      <footer className="border-t bg-muted/30 mt-16">
+        <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-12 max-w-7xl">
+          <div className="flex flex-col md:flex-row justify-between items-center space-y-6 md:space-y-0">
             {/* Brand */}
-            <div className="flex items-center space-x-2">
-              <div className="w-6 h-6 bg-primary rounded-md flex items-center justify-center text-white font-bold text-xs">
+            <div className="flex items-center space-x-3">
+              <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center text-white font-bold text-sm">
                 CS
               </div>
-              <span className="font-semibold">CryptoScore</span>
+              <span className="font-semibold text-lg">CryptoScore</span>
             </div>
 
             {/* Links */}
-            <div className="flex items-center space-x-6">
+            <div className="flex items-center space-x-8">
               {navItems.map((item) => (
                 <Link
                   key={item.path}
                   to={item.path}
-                  className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+                  className="text-sm text-muted-foreground hover:text-foreground transition-colors font-medium"
                 >
                   {item.label}
                 </Link>

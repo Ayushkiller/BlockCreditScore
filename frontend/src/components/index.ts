@@ -1,10 +1,13 @@
 // Core components (keeping only essential ones)
 export { default as Button, IconButton, ButtonGroup } from './Button'
+export { default as EnhancedButton } from './EnhancedButton'
 export { default as Input, SearchInput, Textarea } from './Input'
 export { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from './Card'
+export { default as AccessibleCard } from './AccessibleCard'
 export { default as Badge, StatusBadge, ScoreBadge, RiskBadge } from './Badge'
 export { default as Progress, CircularProgress, ProgressSteps } from './Progress'
 export { default as LoadingSpinner, DotsSpinner, PulseSpinner } from './LoadingSpinner'
+export { default as SkeletonLoader } from './SkeletonLoader'
 export { default as ErrorBoundary, ErrorFallback } from './ErrorBoundary'
 export { ToastProvider, useToast } from './Toast'
 
@@ -19,4 +22,4 @@ export { default as ActionableRecommendations } from './ActionableRecommendation
 export { default as VisualRiskAssessment } from './VisualRiskAssessment'
 export { default as ScoreInsightCards } from './ScoreInsightCards'
 export { default as FloatingActionMenu } from './FloatingActionMenu'
-export { default as ReadabilityEnhancer, Section, MetricCard, ActionButton, StatusBadge } from './ReadabilityEnhancer'
+export { default as ReadabilityEnhancer, Section, MetricCard, ActionButton } from './ReadabilityEnhancer'
