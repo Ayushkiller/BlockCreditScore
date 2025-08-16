@@ -7,6 +7,13 @@ import RiskMitigationPanel from './RiskMitigationPanel'
 import RiskMonitoringAlerts, { type RiskAlert } from './RiskMonitoringAlerts'
 import RiskFactorExplanation from './RiskFactorExplanation'
 import CompetitivePositioningDashboard from './CompetitivePositioningDashboard'
+import EnhancedLoadingExperience from './EnhancedLoadingExperience'
+import ScoreRevealAnimation from './ScoreRevealAnimation'
+import InteractiveScoreBreakdown from './InteractiveScoreBreakdown'
+import ActionableRecommendations from './ActionableRecommendations'
+import VisualRiskAssessment from './VisualRiskAssessment'
+import ScoreInsightCards from './ScoreInsightCards'
+import FloatingActionMenu from './FloatingActionMenu'
 
 interface BreakdownComponentProps {
   label: string
@@ -468,6 +475,8 @@ export default function ScoreDashboard({ addressOverride }: ScoreDashboardProps 
   const [selectedRiskFactor, setSelectedRiskFactor] = useState<{ name: string, factor: RiskFactor } | null>(null)
   const [riskAlerts, setRiskAlerts] = useState<RiskAlert[]>([])
   const [showRiskFactorModal, setShowRiskFactorModal] = useState(false)
+  const [showScoreReveal, setShowScoreReveal] = useState(false)
+  const [analysisComplete, setAnalysisComplete] = useState(false)
 
   const isValidAddress = (address: string) => {
     return /^0x[a-fA-F0-9]{40}$/.test(address)
@@ -479,11 +488,17 @@ export default function ScoreDashboard({ addressOverride }: ScoreDashboardProps 
 
     setLoading(true)
     setError(null)
+    setShowScoreReveal(false)
+    setAnalysisComplete(false)
 
     try {
+      // Simulate the enhanced loading experience
+      await new Promise(resolve => setTimeout(resolve, 8000)) // 8 seconds for loading stages
+      
       const scoreData = await apiService.getCreditScore(targetAddress)
       setScore(scoreData)
       setCurrentAddress(targetAddress)
+      setShowScoreReveal(true)
     } catch (err: any) {
       setError(err.message || 'An error occurred while fetching the score')
       setScore(null)
@@ -679,18 +694,12 @@ export default function ScoreDashboard({ addressOverride }: ScoreDashboardProps 
       <div className="space-y-6">
         <WalletSwitchGuide />
         {renderAddressInputForm()}
-        <div className="card text-center">
-          <div className="animate-spin rounded-full h-16 w-16 border-4 border-primary-200 border-t-primary-600 mx-auto mb-6"></div>
-          <h3 className="text-lg font-semibold text-gray-900 mb-2">Analyzing Wallet</h3>
-          <p className="text-gray-600">
-            Calculating credit score for {currentAddress ? `${currentAddress.slice(0, 6)}...${currentAddress.slice(-4)}` : 'address'}
-          </p>
-          <div className="mt-4 flex justify-center space-x-2">
-            <div className="w-2 h-2 bg-primary-600 rounded-full animate-bounce"></div>
-            <div className="w-2 h-2 bg-primary-600 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
-            <div className="w-2 h-2 bg-primary-600 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
-          </div>
-        </div>
+        <EnhancedLoadingExperience 
+          address={currentAddress || inputAddress}
+          onComplete={() => {
+            // Loading stages complete, now show score reveal
+          }}
+        />
       </div>
     )
   }
@@ -718,6 +727,23 @@ export default function ScoreDashboard({ addressOverride }: ScoreDashboardProps 
               </button>
             )}
           </div>
+        </div>
+      </div>
+    )
+  }
+
+  // Show score reveal animation first
+  if (showScoreReveal && score && !analysisComplete) {
+    return (
+      <div className="space-y-6">
+        <WalletSwitchGuide />
+        {renderAddressInputForm()}
+        <div className="card py-12">
+          <ScoreRevealAnimation 
+            score={score.score}
+            onRevealComplete={() => setAnalysisComplete(true)}
+            showCelebration={score.score >= 700}
+          />
         </div>
       </div>
     )
@@ -813,95 +839,14 @@ export default function ScoreDashboard({ addressOverride }: ScoreDashboardProps 
         
         <div className="pt-6">
           {activeTab === 'overview' && (
-            <div className="space-y-6">
-              {/* Quick Stats */}
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                <div className="text-center">
-                  <div className="text-2xl font-bold text-gray-900">{score.confidence || 0}%</div>
-                  <div className="text-sm text-gray-500">Confidence</div>
-                </div>
-                <div className="text-center">
-                  <div className="text-2xl font-bold text-gray-900">
-                    {Object.values(score.breakdown || {}).reduce((sum, comp) => {
-                      const weightedScore = comp?.weightedScore || 0;
-                      return sum + (isNaN(weightedScore) ? 0 : weightedScore);
-                    }, 0).toFixed(0)}
-                  </div>
-                  <div className="text-sm text-gray-500">Total Points</div>
-                </div>
-                <div className="text-center">
-                  <div className="text-2xl font-bold text-gray-900">
-                    {score.behavioralInsights?.sophisticationLevel || 'N/A'}
-                  </div>
-                  <div className="text-sm text-gray-500">Level</div>
-                </div>
-                <div className="text-center">
-                  <div className="text-2xl font-bold text-gray-900">
-                    {score.riskAssessment?.overallRisk || 'N/A'}
-                  </div>
-                  <div className="text-sm text-gray-500">Risk</div>
-                </div>
-              </div>
-              
-              {/* Basic Breakdown */}
-              <div className="space-y-4">
-                <h4 className="text-lg font-medium text-gray-900">Component Overview</h4>
-                {Object.entries(score.breakdown || {}).map(([key, component]) => {
-                  if (!component || typeof component !== 'object') return null;
-                  const safeComponent = {
-                    score: component.score || 0,
-                    weight: component.weight || 0,
-                    ...component
-                  };
-                  const safeWeight = isNaN(safeComponent.weight) ? 0 : safeComponent.weight;
-                  const safeScore = isNaN(safeComponent.score) ? 0 : safeComponent.score;
-                  return (
-                    <BreakdownComponent
-                      key={key}
-                      label={`${key.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase())} (${Math.round(safeWeight * 100)}%)`}
-                      value={safeScore}
-                      percentage={`${Math.round(safeWeight * 100)}%`}
-                      maxValue={Math.round(safeWeight * 1000)}
-                    />
-                  );
-                })}
-              </div>
-            </div>
+            <ScoreInsightCards score={score} />
           )}
           
           {activeTab === 'breakdown' && (
-            <div className="space-y-4">
-              <div className="flex items-center justify-between mb-6">
-                <h3 className="text-xl font-semibold text-gray-900">Detailed Score Breakdown</h3>
-                <div className="text-sm text-gray-500">
-                  Click components to expand details
-                </div>
-              </div>
-              
-              {Object.entries(score.breakdown || {}).map(([key, component]) => {
-                if (!component || typeof component !== 'object') return null;
-                const safeComponent = {
-                  score: 0,
-                  weight: 0,
-                  weightedScore: 0,
-                  confidence: 0,
-                  explanation: '',
-                  strengths: [],
-                  weaknesses: [],
-                  improvementPotential: 0,
-                  ...component
-                };
-                return (
-                  <EnhancedBreakdownComponent
-                    key={key}
-                    label={key.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase())}
-                    component={safeComponent}
-                    isExpanded={expandedComponents.has(key)}
-                    onToggle={() => toggleComponent(key)}
-                  />
-                );
-              })}
-            </div>
+            <InteractiveScoreBreakdown 
+              breakdown={score.breakdown || {}}
+              totalScore={score.score}
+            />
           )}
           
           {activeTab === 'insights' && (
@@ -953,7 +898,7 @@ export default function ScoreDashboard({ addressOverride }: ScoreDashboardProps 
           )}
           
           {activeTab === 'recommendations' && (
-            <RecommendationsPanel 
+            <ActionableRecommendations 
               recommendations={score.recommendations || []} 
               onRecommendationAction={handleRecommendationAction}
             />
@@ -971,8 +916,8 @@ export default function ScoreDashboard({ addressOverride }: ScoreDashboardProps 
                 />
               )}
               
-              {/* Risk Assessment Dashboard */}
-              <RiskAssessmentDashboard
+              {/* Enhanced Visual Risk Assessment */}
+              <VisualRiskAssessment
                 riskAssessment={score.riskAssessment}
                 onRiskFactorClick={handleRiskFactorClick}
               />
@@ -1085,6 +1030,33 @@ export default function ScoreDashboard({ addressOverride }: ScoreDashboardProps 
           </div>
         </div>
       </div>
+
+      {/* Floating Action Menu */}
+      <FloatingActionMenu
+        onRefresh={refreshScore}
+        onExport={() => {
+          // Export functionality
+          console.log('Exporting score report...')
+        }}
+        onShare={() => {
+          // Share functionality
+          if (navigator.share) {
+            navigator.share({
+              title: 'My CryptoScore Credit Report',
+              text: `Check out my credit score of ${score.score}/1000!`,
+              url: window.location.href
+            })
+          } else {
+            navigator.clipboard.writeText(window.location.href)
+            // Show toast notification
+          }
+        }}
+        onHelp={() => {
+          // Help functionality
+          console.log('Opening help...')
+        }}
+        isVisible={analysisComplete}
+      />
     </div>
   )
 }
