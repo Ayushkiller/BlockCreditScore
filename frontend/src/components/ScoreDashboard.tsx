@@ -449,9 +449,16 @@ function BreakdownComponent({ label, value, percentage, maxValue = 300 }: Breakd
   )
 }
 
-export default function ScoreDashboard() {
+interface ScoreDashboardProps {
+  addressOverride?: string | null
+}
+
+export default function ScoreDashboard({ addressOverride }: ScoreDashboardProps = {}) {
   const { account } = useWallet()
   const [score, setScore] = useState<CreditScore | null>(null)
+  
+  // Use addressOverride if provided, otherwise fall back to connected account
+  const activeAddress = addressOverride || account
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [inputAddress, setInputAddress] = useState('')
@@ -461,8 +468,6 @@ export default function ScoreDashboard() {
   const [selectedRiskFactor, setSelectedRiskFactor] = useState<{ name: string, factor: RiskFactor } | null>(null)
   const [riskAlerts, setRiskAlerts] = useState<RiskAlert[]>([])
   const [showRiskFactorModal, setShowRiskFactorModal] = useState(false)
-
-  // Removed auto-fill behavior - user must manually enter or select wallet address
 
   const isValidAddress = (address: string) => {
     return /^0x[a-fA-F0-9]{40}$/.test(address)
@@ -486,6 +491,14 @@ export default function ScoreDashboard() {
       setLoading(false)
     }
   }
+
+  // Auto-fetch score when addressOverride is provided
+  useEffect(() => {
+    if (activeAddress && isValidAddress(activeAddress)) {
+      setInputAddress(activeAddress)
+      fetchScore(activeAddress)
+    }
+  }, [activeAddress])
 
   const refreshScore = async () => {
     if (!currentAddress) return
